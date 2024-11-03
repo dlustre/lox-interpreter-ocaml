@@ -5,7 +5,12 @@ type line = int
 type token = Token of lexeme * line
 (* | TokenWithLiteral of literal * lexeme * line *)
 
-let error line message = Printf.printf "[line %d] Error: %s\n" line message
+let hadError = ref false
+let hadRuntimeError = ref false
+
+let error line message =
+  hadError := true;
+  Printf.eprintf "[line %d] Error: %s\n" line message
 
 let stringify_token_lexeme token_kind =
   match token_kind with
@@ -44,7 +49,7 @@ let rec tokenize chars tokens line =
       let lexeme = String.make 1 char in
       tokenize rest (Token (lexeme, 0) :: tokens) line
   | unknown_char :: rest ->
-      error line (Printf.sprintf "Unknown character: %c" unknown_char);
+      error line (Printf.sprintf "Unexpected character: %c" unknown_char);
       tokenize rest tokens line
 
 let () =
@@ -62,6 +67,7 @@ let () =
   let file_contents = In_channel.with_open_text filename In_channel.input_all in
   let chars = file_contents |> String.to_seq |> List.of_seq in
   let tokens = tokenize chars [] 1 in
-
   List.iter (fun x -> x |> stringify |> print_endline) tokens;
+  if !hadError then exit 65;
+  if !hadRuntimeError then exit 70;
   ()
