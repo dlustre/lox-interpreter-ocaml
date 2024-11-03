@@ -1,3 +1,35 @@
+type lexeme = string
+type line = int
+(* type literal = Float of float | String of string *)
+
+type token = Token of lexeme * line
+(* | TokenWithLiteral of literal * lexeme * line *)
+
+let stringify_token_lexeme token_kind =
+  match token_kind with
+  | "(" -> "LEFT_PAREN"
+  | ")" -> "RIGHT_PAREN"
+  | "" -> "EOF"
+  | _ -> "UNKNOWN"
+
+let stringify token =
+  match token with
+  | Token (lexeme, _) ->
+      Printf.sprintf "%s %s %s" (stringify_token_lexeme lexeme) lexeme "null"
+(* | TokenWithLiteral (literal, lexeme, _) ->
+    Printf.sprintf "%s %s %s"
+      (stringify_token_lexeme lexeme)
+      lexeme
+      (match literal with Float f -> Float.to_string f | String s -> s) *)
+
+let rec tokenize chars tokens line =
+  match chars with
+  | [] -> List.rev (Token ("", line) :: tokens)
+  | char :: rest when List.exists (fun c -> c = char) [ '('; ')' ] ->
+      let lexeme = String.make 1 char in
+      tokenize rest (Token (lexeme, 0) :: tokens) line
+  | _ -> raise Exit
+
 let () =
   if Array.length Sys.argv < 3 then (
     Printf.eprintf "Usage: ./your_program.sh tokenize <filename>\n";
@@ -11,10 +43,8 @@ let () =
     exit 1);
 
   let file_contents = In_channel.with_open_text filename In_channel.input_all in
+  let chars = file_contents |> String.to_seq |> List.of_seq in
+  let tokens = tokenize chars [] 1 in
 
-  if String.length file_contents > 0 then
-    (* Implement & use your scanner here *)
-    failwith "Scanner not implemented"
-  else print_endline "EOF  null";
-  (* Placeholder, remove this line when implementing the scanner *)
+  List.iter (fun x -> x |> stringify |> print_endline) tokens;
   ()
