@@ -6,8 +6,13 @@ type token =
   | Token of lexeme * line
   | TokenWithLiteral of literal * lexeme * line
 
-(* let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false *)
+let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' | '_' -> true | _ -> false
 let is_digit = function '0' .. '9' -> true | _ -> false
+
+let is_alphanumeric = function
+  | x when is_alpha x || is_digit x -> true
+  | _ -> false
+
 let hadError = ref false
 let hadRuntimeError = ref false
 
@@ -17,6 +22,26 @@ let error line message =
 
 let single_chars =
   [ '('; ')'; '{'; '}'; ','; '.'; '-'; '+'; ';'; '*'; '='; '!'; '<'; '>'; '/' ]
+
+let keywords =
+  [
+    "and";
+    "class";
+    "else";
+    "for";
+    "fun";
+    "if";
+    "nil";
+    "or";
+    "print";
+    "return";
+    "super";
+    "this";
+    "true";
+    "var";
+    "while";
+    "false";
+  ]
 
 let stringify_token_lexeme = function
   | "(" -> "LEFT_PAREN"
@@ -42,6 +67,11 @@ let stringify_token_lexeme = function
   | num_literal
     when String.length num_literal > 0 && is_digit (String.get num_literal 0) ->
       "NUMBER"
+  | identifier
+    when String.length identifier > 0 && is_alpha (String.get identifier 0) ->
+      if List.exists (fun i -> i = identifier) keywords then
+        String.uppercase_ascii identifier
+      else "IDENTIFIER"
   | "" -> "EOF"
   | _ -> "UNKNOWN"
 
@@ -118,6 +148,16 @@ let rec tokenize chars tokens line =
   | '=' :: '=' :: rest -> tokenize rest (Token ("==", 0) :: tokens) line
   | char :: rest when List.exists (fun c -> c = char) single_chars ->
       tokenize rest (Token (String.make 1 char, line) :: tokens) line
+  | alpha_char :: _ as chars_with_identifier when is_alpha alpha_char ->
+      let rec consume_identifier = function
+        | alnum_char :: rest, identifier when is_alphanumeric alnum_char ->
+            consume_identifier (rest, alnum_char :: identifier)
+        | rest, identifier ->
+            (identifier |> List.rev |> List.to_seq |> String.of_seq, rest)
+      in
+      let identifier, rest = consume_identifier (chars_with_identifier, []) in
+
+      tokenize rest (Token (identifier, line) :: tokens) line
   | unknown_char :: rest ->
       error line (Printf.sprintf "Unexpected character: %c" unknown_char);
       tokenize rest tokens line
