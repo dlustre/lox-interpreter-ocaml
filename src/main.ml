@@ -1,13 +1,13 @@
 type lexeme = string
 type line = int
-
-type literal = (* FloatLiteral of float  *)
-  | StringLiteral of string
+type literal = NumberLiteral of float | StringLiteral of string
 
 type token =
   | Token of lexeme * line
   | TokenWithLiteral of literal * lexeme * line
 
+(* let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false *)
+let is_digit = function '0' .. '9' -> true | _ -> false
 let hadError = ref false
 let hadRuntimeError = ref false
 
@@ -18,8 +18,7 @@ let error line message =
 let single_chars =
   [ '('; ')'; '{'; '}'; ','; '.'; '-'; '+'; ';'; '*'; '='; '!'; '<'; '>'; '/' ]
 
-let stringify_token_lexeme token_kind =
-  match token_kind with
+let stringify_token_lexeme = function
   | "(" -> "LEFT_PAREN"
   | ")" -> "RIGHT_PAREN"
   | "{" -> "LEFT_BRACE"
@@ -39,13 +38,14 @@ let stringify_token_lexeme token_kind =
   | "<=" -> "LESS_EQUAL"
   | ">" -> "GREATER"
   | ">=" -> "GREATER_EQUAL"
-  | string_literal when String.starts_with ~prefix:"\"" string_literal ->
-      "STRING"
+  | str_literal when String.starts_with ~prefix:"\"" str_literal -> "STRING"
+  | num_literal
+    when String.length num_literal > 0 && is_digit (String.get num_literal 0) ->
+      "NUMBER"
   | "" -> "EOF"
   | _ -> "UNKNOWN"
 
-let stringify token =
-  match token with
+let stringify = function
   | Token (lexeme, _) ->
       Printf.sprintf "%s %s %s" (stringify_token_lexeme lexeme) lexeme "null"
   | TokenWithLiteral (literal, lexeme, _) ->
@@ -53,12 +53,29 @@ let stringify token =
         (stringify_token_lexeme lexeme)
         lexeme
         (match literal with
-        (* | FloatLiteral f -> Float.to_string f *)
+        | NumberLiteral f ->
+            Printf.sprintf (if Float.is_integer f then "%.1f" else "%.15g") f
         | StringLiteral s -> s)
+
+let rec number = function
+  | digit :: rest, after_dot, literal when is_digit digit ->
+      number (rest, after_dot, digit :: literal)
+  | '.' :: rest, false, literal -> number (rest, true, '.' :: literal)
+  | after_num, _, literal ->
+      (literal |> List.rev |> List.to_seq |> String.of_seq, after_num)
 
 let rec tokenize chars tokens line =
   match chars with
   | [] -> List.rev (Token ("", line) :: tokens)
+  | digit :: _ as chars_with_digit when is_digit digit ->
+      let num_literal_str, rest = number (chars_with_digit, false, []) in
+      tokenize rest
+        (TokenWithLiteral
+           ( NumberLiteral (Float.of_string num_literal_str),
+             num_literal_str,
+             line )
+        :: tokens)
+        line
   | '"' :: rest ->
       let rec consume_str_literal c literal =
         match c with
@@ -90,8 +107,9 @@ let rec tokenize chars tokens line =
   | ' ' :: rest | '\r' :: rest | '\t' :: rest -> tokenize rest tokens line
   | '\n' :: rest -> tokenize rest tokens (line + 1)
   | '/' :: '/' :: rest ->
-      let rec consume_comment c =
-        match c with [] | '\n' :: _ -> c | _ :: rest -> consume_comment rest
+      let rec consume_comment = function
+        | ([] | '\n' :: _) as after_comment -> after_comment
+        | _ :: rest -> consume_comment rest
       in
       tokenize (consume_comment rest) tokens line
   | '<' :: '=' :: rest -> tokenize rest (Token ("<=", 0) :: tokens) line
@@ -99,7 +117,7 @@ let rec tokenize chars tokens line =
   | '!' :: '=' :: rest -> tokenize rest (Token ("!=", 0) :: tokens) line
   | '=' :: '=' :: rest -> tokenize rest (Token ("==", 0) :: tokens) line
   | char :: rest when List.exists (fun c -> c = char) single_chars ->
-      tokenize rest (Token (String.make 1 char, 0) :: tokens) line
+      tokenize rest (Token (String.make 1 char, line) :: tokens) line
   | unknown_char :: rest ->
       error line (Printf.sprintf "Unexpected character: %c" unknown_char);
       tokenize rest tokens line
