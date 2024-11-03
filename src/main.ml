@@ -49,6 +49,11 @@ let stringify token =
 let rec tokenize chars tokens line =
   match chars with
   | [] -> List.rev (Token ("", line) :: tokens)
+  | '/' :: '/' :: rest ->
+      let rec consume_comment c =
+        match c with [] | '\n' :: _ -> c | _ :: rest -> consume_comment rest
+      in
+      tokenize (consume_comment rest) tokens (line + 1)
   | '\n' :: rest -> tokenize rest tokens (line + 1)
   | '<' :: '=' :: rest -> tokenize rest (Token ("<=", 0) :: tokens) line
   | '>' :: '=' :: rest -> tokenize rest (Token (">=", 0) :: tokens) line
@@ -72,6 +77,7 @@ let rec tokenize chars tokens line =
              '!';
              '<';
              '>';
+             '/';
            ] ->
       tokenize rest (Token (String.make 1 char, 0) :: tokens) line
   | unknown_char :: rest ->
