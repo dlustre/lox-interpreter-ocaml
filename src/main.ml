@@ -9,6 +9,8 @@ let stringify_token_lexeme token_kind =
   match token_kind with
   | "(" -> "LEFT_PAREN"
   | ")" -> "RIGHT_PAREN"
+  | "{" -> "LEFT_BRACE"
+  | "}" -> "RIGHT_BRACE"
   | "" -> "EOF"
   | _ -> "UNKNOWN"
 
@@ -25,7 +27,7 @@ let stringify token =
 let rec tokenize chars tokens line =
   match chars with
   | [] -> List.rev (Token ("", line) :: tokens)
-  | char :: rest when List.exists (fun c -> c = char) [ '('; ')' ] ->
+  | char :: rest when List.exists (fun c -> c = char) [ '('; ')'; '{'; '}' ] ->
       let lexeme = String.make 1 char in
       tokenize rest (Token (lexeme, 0) :: tokens) line
   | _ -> raise Exit
