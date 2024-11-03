@@ -5,6 +5,8 @@ type line = int
 type token = Token of lexeme * line
 (* | TokenWithLiteral of literal * lexeme * line *)
 
+let error line message = Printf.printf "[line %d] Error: %s\n" line message
+
 let stringify_token_lexeme token_kind =
   match token_kind with
   | "(" -> "LEFT_PAREN"
@@ -34,13 +36,16 @@ let stringify token =
 let rec tokenize chars tokens line =
   match chars with
   | [] -> List.rev (Token ("", line) :: tokens)
+  | '\n' :: rest -> tokenize rest tokens (line + 1)
   | char :: rest
     when List.exists
            (fun c -> c = char)
            [ '('; ')'; '{'; '}'; ','; '.'; '-'; '+'; ';'; '*' ] ->
       let lexeme = String.make 1 char in
       tokenize rest (Token (lexeme, 0) :: tokens) line
-  | _ -> raise Exit
+  | unknown_char :: rest ->
+      error line (Printf.sprintf "Unknown character: %c" unknown_char);
+      tokenize rest tokens line
 
 let () =
   if Array.length Sys.argv < 3 then (
