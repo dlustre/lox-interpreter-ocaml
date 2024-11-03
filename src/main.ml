@@ -27,6 +27,8 @@ let stringify_token_lexeme token_kind =
   | "*" -> "STAR"
   | "=" -> "EQUAL"
   | "==" -> "EQUAL_EQUAL"
+  | "!=" -> "BANG_EQUAL"
+  | "!" -> "BANG"
   | "" -> "EOF"
   | _ -> "UNKNOWN"
 
@@ -44,12 +46,12 @@ let rec tokenize chars tokens line =
   match chars with
   | [] -> List.rev (Token ("", line) :: tokens)
   | '\n' :: rest -> tokenize rest tokens (line + 1)
-  | '=' :: '=' :: rest ->
-      tokenize rest (Token (String.make 2 '=', 0) :: tokens) line
+  | '!' :: '=' :: rest -> tokenize rest (Token ("!=", 0) :: tokens) line
+  | '=' :: '=' :: rest -> tokenize rest (Token ("==", 0) :: tokens) line
   | char :: rest
     when List.exists
            (fun c -> c = char)
-           [ '('; ')'; '{'; '}'; ','; '.'; '-'; '+'; ';'; '*'; '=' ] ->
+           [ '('; ')'; '{'; '}'; ','; '.'; '-'; '+'; ';'; '*'; '='; '!' ] ->
       tokenize rest (Token (String.make 1 char, 0) :: tokens) line
   | unknown_char :: rest ->
       error line (Printf.sprintf "Unexpected character: %c" unknown_char);
