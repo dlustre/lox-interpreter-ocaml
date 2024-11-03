@@ -1,5 +1,5 @@
-type lexeme = string
-type line = int
+type lexeme = Lexeme of string
+type line = Line of int
 type literal = NumberLiteral of float | StringLiteral of string
 
 type token =
@@ -16,7 +16,7 @@ let is_alphanumeric = function
 let hadError = ref false
 let hadRuntimeError = ref false
 
-let error line message =
+let error (Line line) message =
   hadError := true;
   Printf.eprintf "[line %d] Error: %s\n" line message
 
@@ -76,9 +76,9 @@ let stringify_token_lexeme = function
   | _ -> "UNKNOWN"
 
 let stringify = function
-  | Token (lexeme, _) ->
+  | Token (Lexeme lexeme, _) ->
       Printf.sprintf "%s %s %s" (stringify_token_lexeme lexeme) lexeme "null"
-  | TokenWithLiteral (literal, lexeme, _) ->
+  | TokenWithLiteral (literal, Lexeme lexeme, _) ->
       Printf.sprintf "%s %s %s"
         (stringify_token_lexeme lexeme)
         lexeme
@@ -96,14 +96,14 @@ let rec number = function
 
 let rec tokenize chars tokens line =
   match chars with
-  | [] -> List.rev (Token ("", line) :: tokens)
+  | [] -> List.rev (Token (Lexeme "", Line line) :: tokens)
   | digit :: _ as chars_with_digit when is_digit digit ->
       let num_literal_str, rest = number (chars_with_digit, false, []) in
       tokenize rest
         (TokenWithLiteral
            ( NumberLiteral (Float.of_string num_literal_str),
-             num_literal_str,
-             line )
+             Lexeme num_literal_str,
+             Line line )
         :: tokens)
         line
   | '"' :: rest ->
@@ -125,12 +125,12 @@ let rec tokenize chars tokens line =
             tokenize after_str
               (TokenWithLiteral
                  ( StringLiteral str_literal,
-                   Printf.sprintf "\"%s\"" str_literal,
-                   line )
+                   Lexeme (Printf.sprintf "\"%s\"" str_literal),
+                   Line line )
               :: tokens)
               line
         | _ ->
-            error line "Unterminated string.";
+            error (Line line) "Unterminated string.";
             tokenize [] tokens line
       in
       result
@@ -142,12 +142,18 @@ let rec tokenize chars tokens line =
         | _ :: rest -> consume_comment rest
       in
       tokenize (consume_comment rest) tokens line
-  | '<' :: '=' :: rest -> tokenize rest (Token ("<=", 0) :: tokens) line
-  | '>' :: '=' :: rest -> tokenize rest (Token (">=", 0) :: tokens) line
-  | '!' :: '=' :: rest -> tokenize rest (Token ("!=", 0) :: tokens) line
-  | '=' :: '=' :: rest -> tokenize rest (Token ("==", 0) :: tokens) line
+  | first_char :: '=' :: rest
+    when List.exists (fun c -> c = first_char) [ '<'; '>'; '!'; '=' ] ->
+      tokenize rest
+        (Token
+           ( Lexeme ([ first_char; '=' ] |> List.to_seq |> String.of_seq),
+             Line line )
+        :: tokens)
+        line
   | char :: rest when List.exists (fun c -> c = char) single_chars ->
-      tokenize rest (Token (String.make 1 char, line) :: tokens) line
+      tokenize rest
+        (Token (Lexeme (String.make 1 char), Line line) :: tokens)
+        line
   | alpha_char :: _ as chars_with_identifier when is_alpha alpha_char ->
       let rec consume_identifier = function
         | alnum_char :: rest, identifier when is_alphanumeric alnum_char ->
@@ -157,9 +163,9 @@ let rec tokenize chars tokens line =
       in
       let identifier, rest = consume_identifier (chars_with_identifier, []) in
 
-      tokenize rest (Token (identifier, line) :: tokens) line
+      tokenize rest (Token (Lexeme identifier, Line line) :: tokens) line
   | unknown_char :: rest ->
-      error line (Printf.sprintf "Unexpected character: %c" unknown_char);
+      error (Line line) (Printf.sprintf "Unexpected character: %c" unknown_char);
       tokenize rest tokens line
 
 let () =
