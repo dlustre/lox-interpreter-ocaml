@@ -1,9 +1,12 @@
 type lexeme = string
 type line = int
-(* type literal = Float of float | String of string *)
 
-type token = Token of lexeme * line
-(* | TokenWithLiteral of literal * lexeme * line *)
+type literal = (* FloatLiteral of float  *)
+  | StringLiteral of string
+
+type token =
+  | Token of lexeme * line
+  | TokenWithLiteral of literal * lexeme * line
 
 let hadError = ref false
 let hadRuntimeError = ref false
@@ -36,6 +39,8 @@ let stringify_token_lexeme token_kind =
   | "<=" -> "LESS_EQUAL"
   | ">" -> "GREATER"
   | ">=" -> "GREATER_EQUAL"
+  | string_literal when String.starts_with ~prefix:"\"" string_literal ->
+      "STRING"
   | "" -> "EOF"
   | _ -> "UNKNOWN"
 
@@ -43,15 +48,45 @@ let stringify token =
   match token with
   | Token (lexeme, _) ->
       Printf.sprintf "%s %s %s" (stringify_token_lexeme lexeme) lexeme "null"
-(* | TokenWithLiteral (literal, lexeme, _) ->
-    Printf.sprintf "%s %s %s"
-      (stringify_token_lexeme lexeme)
-      lexeme
-      (match literal with Float f -> Float.to_string f | String s -> s) *)
+  | TokenWithLiteral (literal, lexeme, _) ->
+      Printf.sprintf "%s %s %s"
+        (stringify_token_lexeme lexeme)
+        lexeme
+        (match literal with
+        (* | FloatLiteral f -> Float.to_string f *)
+        | StringLiteral s -> s)
 
 let rec tokenize chars tokens line =
   match chars with
   | [] -> List.rev (Token ("", line) :: tokens)
+  | '"' :: rest ->
+      let rec consume_str_literal c literal =
+        match c with
+        | [] -> None
+        | '"' :: after_str ->
+            Some
+              ( StringLiteral
+                  (literal |> List.rev |> List.to_seq |> String.of_seq),
+                after_str )
+        | str_char :: after_char ->
+            consume_str_literal after_char (str_char :: literal)
+      in
+
+      let result =
+        match consume_str_literal rest [] with
+        | Some (StringLiteral str_literal, after_str) ->
+            tokenize after_str
+              (TokenWithLiteral
+                 ( StringLiteral str_literal,
+                   Printf.sprintf "\"%s\"" str_literal,
+                   line )
+              :: tokens)
+              line
+        | _ ->
+            error line "Unterminated string.";
+            tokenize [] tokens line
+      in
+      result
   | ' ' :: rest | '\r' :: rest | '\t' :: rest -> tokenize rest tokens line
   | '\n' :: rest -> tokenize rest tokens (line + 1)
   | '/' :: '/' :: rest ->
