@@ -12,6 +12,9 @@ let error line message =
   hadError := true;
   Printf.eprintf "[line %d] Error: %s\n" line message
 
+let single_chars =
+  [ '('; ')'; '{'; '}'; ','; '.'; '-'; '+'; ';'; '*'; '='; '!'; '<'; '>'; '/' ]
+
 let stringify_token_lexeme token_kind =
   match token_kind with
   | "(" -> "LEFT_PAREN"
@@ -55,31 +58,12 @@ let rec tokenize chars tokens line =
       let rec consume_comment c =
         match c with [] | '\n' :: _ -> c | _ :: rest -> consume_comment rest
       in
-      tokenize (consume_comment rest) tokens (line + 1)
+      tokenize (consume_comment rest) tokens line
   | '<' :: '=' :: rest -> tokenize rest (Token ("<=", 0) :: tokens) line
   | '>' :: '=' :: rest -> tokenize rest (Token (">=", 0) :: tokens) line
   | '!' :: '=' :: rest -> tokenize rest (Token ("!=", 0) :: tokens) line
   | '=' :: '=' :: rest -> tokenize rest (Token ("==", 0) :: tokens) line
-  | char :: rest
-    when List.exists
-           (fun c -> c = char)
-           [
-             '(';
-             ')';
-             '{';
-             '}';
-             ',';
-             '.';
-             '-';
-             '+';
-             ';';
-             '*';
-             '=';
-             '!';
-             '<';
-             '>';
-             '/';
-           ] ->
+  | char :: rest when List.exists (fun c -> c = char) single_chars ->
       tokenize rest (Token (String.make 1 char, 0) :: tokens) line
   | unknown_char :: rest ->
       error line (Printf.sprintf "Unexpected character: %c" unknown_char);
