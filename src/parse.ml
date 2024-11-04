@@ -22,6 +22,14 @@ let parser t =
           self#advance
       | _ -> raise (ParseError error_msg)
 
+    (** Evaluate the [reduce] value on each token that matches any of [token_kinds], using a [predicate]. *)
+
+    method reduce_all_matches token_kinds predicate reduce =
+      match tokens with
+      | token :: _ when self#match_any token_kinds ->
+          self#reduce_all_matches token_kinds predicate (predicate token reduce)
+      | _ -> reduce
+
     method check token_kind =
       match tokens with
       | Token { kind = EOF; _ } :: _ -> false
@@ -50,29 +58,26 @@ let parser t =
           Grouping expr
       | _ -> raise (ParseError "Expect expression.")
 
-    method factor =
-      let expr = self#unary in
-
-      let rec consume_operators expr =
-        match tokens with
-        | operator :: _ when self#match_any [ SLASH; STAR ] ->
-            let right = self#unary in
-            consume_operators (Binary { left = expr; operator; right })
-        | _ -> expr
-      in
-
-      consume_operators expr
-
     method unary =
-      match self#advance with
-      | Token { kind = BANG | MINUS; _ } as operator ->
+      match tokens with
+      | operator :: _ when self#match_any [ BANG; MINUS ] ->
           let right = self#unary in
           Unary { operator; right }
-      | _ as previous ->
-          tokens <- previous :: tokens;
-          self#primary
+      | _ -> self#primary
 
-    method expression = self#factor
+    method factor =
+      self#reduce_all_matches [ SLASH; STAR ]
+        (fun operator reduce ->
+          Binary { left = reduce; operator; right = self#unary })
+        self#unary
+
+    method term =
+      self#reduce_all_matches [ MINUS; PLUS ]
+        (fun operator reduce ->
+          Binary { left = reduce; operator; right = self#factor })
+        self#factor
+
+    method expression = self#term
 
     method to_expr =
       match self#expression with
