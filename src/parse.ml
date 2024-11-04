@@ -41,9 +41,11 @@ let parser t =
       | Token { kind = BANG | MINUS; _ } as operator ->
           let right = self#unary in
           Unary { operator; right }
-      | _ -> self#primary
+      | _ as previous ->
+          tokens <- previous :: tokens;
+          self#primary
 
-    method expression = self#primary
+    method expression = self#unary
 
     method to_expr =
       match self#expression with
