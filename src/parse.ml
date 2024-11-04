@@ -12,6 +12,7 @@ let parser t =
       match tokens with
       | token :: rest ->
           tokens <- rest;
+          current <- current + 1;
           token
       | _ -> raise (ParseError "Unexpectedly exhausted tokens.")
 
@@ -84,7 +85,14 @@ let parser t =
           Binary { left = reduce; operator; right = self#term })
         self#term
 
-    method expression = self#comparison
+    method equality =
+      self#reduce_all_matches
+        [ BANG_EQUAL; EQUAL_EQUAL ]
+        (fun operator reduce ->
+          Binary { left = reduce; operator; right = self#comparison })
+        self#comparison
+
+    method expression = self#equality
 
     method to_expr =
       match self#expression with
