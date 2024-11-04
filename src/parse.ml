@@ -1,7 +1,8 @@
 open Token
 open Expr
 
-exception ParseError of string
+exception ParseError of Token.t * string
+exception Unreachable
 
 let parser t =
   object (self)
@@ -14,14 +15,15 @@ let parser t =
           tokens <- rest;
           current <- current + 1;
           token
-      | _ -> raise (ParseError "Unexpectedly exhausted tokens.")
+      | [] -> raise Unreachable
 
     method consume token_kind error_msg =
       match tokens with
       | (Token { kind; _ } :: _ | TokenWithLiteral { kind; _ } :: _)
         when kind = token_kind ->
           self#advance
-      | _ -> raise (ParseError error_msg)
+      | token :: _ -> raise (ParseError (token, error_msg))
+      | [] -> raise Unreachable
 
     (** Evaluate the [reduce] value on each token that matches any of [token_kinds], using a [predicate]. *)
 
@@ -36,7 +38,7 @@ let parser t =
       | Token { kind = EOF; _ } :: _ -> false
       | Token { kind; _ } :: _ | TokenWithLiteral { kind; _ } :: _ ->
           kind = token_kind
-      | _ -> raise (ParseError "Unexpectedly exhausted tokens.")
+      | _ -> raise Unreachable
 
     method match_any token_kinds =
       if List.exists (function kind -> self#check kind) token_kinds then
@@ -57,7 +59,8 @@ let parser t =
           let expr = self#expression in
           let _ = self#consume RIGHT_PAREN "Expect ')' after expression." in
           Grouping expr
-      | _ -> raise (ParseError "Expect expression.")
+      | token :: _ -> raise (ParseError (token, "Expect expression."))
+      | _ -> raise Unreachable
 
     method unary =
       match tokens with
@@ -96,8 +99,8 @@ let parser t =
 
     method to_expr =
       match self#expression with
-      | exception ParseError msg ->
-          print_endline msg;
+      | exception ParseError (token, msg) ->
+          Error.of_token token msg;
           None
       | expr -> Some expr
   end

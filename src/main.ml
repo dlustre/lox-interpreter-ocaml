@@ -24,7 +24,7 @@ let () =
 
       match parser#to_expr with
       | Some expr -> expr |> Expr.to_string |> print_endline
-      | None -> print_endline "Unexpected error")
+      | None -> ())
   | unknown_command ->
       Printf.eprintf "Unknown command: %s\n" unknown_command;
       exit 1

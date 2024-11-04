@@ -121,7 +121,7 @@ let rec tokenize chars tokens line =
             :: tokens)
             line
       | _ ->
-          Error.error line "Unterminated string.";
+          Error.of_line line "Unterminated string.";
           tokenize [] tokens line)
   | ' ' :: rest | '\r' :: rest | '\t' :: rest -> tokenize rest tokens line
   | '\n' :: rest -> tokenize rest tokens (line + 1)
@@ -151,5 +151,6 @@ let rec tokenize chars tokens line =
       let kind = lexeme_to_token_kind identifier in
       tokenize rest (Token { kind; lexeme = identifier; line } :: tokens) line
   | unknown_char :: rest ->
-      Error.error line (Printf.sprintf "Unexpected character: %c" unknown_char);
+      Error.of_line line
+        (Printf.sprintf "Unexpected character: %c" unknown_char);
       tokenize rest tokens line
