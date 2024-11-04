@@ -77,7 +77,14 @@ let parser t =
           Binary { left = reduce; operator; right = self#factor })
         self#factor
 
-    method expression = self#term
+    method comparison =
+      self#reduce_all_matches
+        [ GREATER; GREATER_EQUAL; LESS; LESS_EQUAL ]
+        (fun operator reduce ->
+          Binary { left = reduce; operator; right = self#term })
+        self#term
+
+    method expression = self#comparison
 
     method to_expr =
       match self#expression with
