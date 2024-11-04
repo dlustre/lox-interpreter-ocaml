@@ -5,8 +5,6 @@ let literal_to_string = function
       Printf.sprintf (if Float.is_integer f then "%.1f" else "%.15g") f
   | StringLiteral s -> s
 
-exception UnexpectedLexeme
-
 type kind =
   (* Single-character tokens. *)
   | LEFT_PAREN
@@ -93,7 +91,7 @@ let kind_to_string = function
   | WHILE -> "WHILE"
   | EOF -> "EOF"
 
-type token =
+type t =
   | Token of { kind : kind; lexeme : string; line : int }
   | TokenWithLiteral of {
       kind : kind;
@@ -108,3 +106,5 @@ let to_string = function
   | TokenWithLiteral { kind; literal; lexeme; _ } ->
       Printf.sprintf "%s %s %s" (kind_to_string kind) lexeme
         (literal_to_string literal)
+
+let print tokens = List.iter (fun x -> x |> to_string |> print_endline) tokens

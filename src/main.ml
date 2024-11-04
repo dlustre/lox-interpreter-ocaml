@@ -13,20 +13,17 @@ let () =
       in
       let chars = file_contents |> String.to_seq |> List.of_seq in
       let tokens = Tokenize.tokenize chars [] 1 in
-      List.iter (fun x -> x |> Token.to_string |> print_endline) tokens
+      Token.print tokens
   | "parse" -> (
       let file_contents =
         In_channel.with_open_text filename In_channel.input_all
       in
       let chars = file_contents |> String.to_seq |> List.of_seq in
       let tokens = Tokenize.tokenize chars [] 1 in
-
-      (* List.iter (fun x -> x |> Token.to_string |> print_endline) tokens; *)
-      let token = List.hd tokens in
-      let parser = Parse.parser [ token ] in
+      let parser = Parse.parser tokens in
 
       match parser#to_expr with
-      | Some expr -> Astprinter.print expr
+      | Some expr -> expr |> Expr.to_string |> print_endline
       | None -> print_endline "Unexpected error")
   | unknown_command ->
       Printf.eprintf "Unknown command: %s\n" unknown_command;
