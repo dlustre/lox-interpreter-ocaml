@@ -19,4 +19,6 @@ let expr_literal_to_string = function
 let rec to_string = function
   | Literal literal -> literal |> expr_literal_to_string
   | Grouping expr -> "(group " ^ to_string expr ^ ")"
+  | Unary { operator = Token { lexeme; _ }; right } ->
+      Printf.sprintf "(%s %s)" lexeme (to_string right)
   | _ -> "unknown expr, can't print"

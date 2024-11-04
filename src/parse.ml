@@ -36,6 +36,13 @@ let parser t =
           Grouping expr
       | _ -> raise (ParseError "Expect expression.")
 
+    method unary =
+      match self#advance with
+      | Token { kind = BANG | MINUS; _ } as operator ->
+          let right = self#unary in
+          Unary { operator; right }
+      | _ -> self#primary
+
     method expression = self#primary
 
     method to_expr =
