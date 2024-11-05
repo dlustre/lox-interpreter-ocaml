@@ -1,10 +1,10 @@
 open Token
 
-let hadError = ref false
-let hadRuntimeError = ref false
+let had_error = ref false
+let had_runtime_error = ref false
 
 let report line where message =
-  hadError := true;
+  had_error := true;
   Printf.eprintf "[line %d] Error%s: %s\n" line where message
 
 let of_line line message = report line "" message

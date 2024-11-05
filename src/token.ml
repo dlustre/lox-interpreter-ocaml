@@ -1,9 +1,17 @@
 type literal = NumberLiteral of float | StringLiteral of string
 
+let trailing_zero = ref true
+let set_trailing_zero v = trailing_zero := v
+
+let number_to_string num =
+  match !trailing_zero with
+  | false -> Printf.sprintf "%g" num
+  | true ->
+      Printf.sprintf (if Float.is_integer num then "%.1f" else "%.15g") num
+
 let literal_to_string = function
-  | NumberLiteral f ->
-      Printf.sprintf (if Float.is_integer f then "%.1f" else "%.15g") f
   | StringLiteral s -> s
+  | NumberLiteral n -> number_to_string n
 
 type kind =
   (* Single-character tokens. *)

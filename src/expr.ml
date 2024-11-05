@@ -15,7 +15,7 @@ let expr_literal_to_string = function
   | Nil -> "nil"
 
 let rec to_string = function
-  | Literal literal -> literal |> expr_literal_to_string
+  | Literal literal -> expr_literal_to_string literal
   | Grouping expr -> parenthesize ("group", [ expr ], "")
   | Unary { operator = Token { lexeme; _ }; right } ->
       parenthesize (lexeme, [ right ], "")

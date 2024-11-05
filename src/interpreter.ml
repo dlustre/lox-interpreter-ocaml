@@ -4,5 +4,5 @@ exception RuntimeError
 
 let interpreter =
   object (_self)
-    method evaluate = function Literal _ as l -> l | _ -> raise RuntimeError
+    method evaluate = function Literal l -> l | _ -> raise RuntimeError
   end

@@ -16,23 +16,27 @@ let () =
   in
 
   match command with
-  | "tokenize" -> Token.print @@ tokens filename
+  | "tokenize" ->
+      Token.set_trailing_zero true;
+      Token.print @@ tokens filename
   | "parse" -> (
+      Token.set_trailing_zero true;
       match (Parse.parser @@ tokens filename)#to_expr with
       | exception Parse.ParseError (token, msg) -> Error.of_token token msg
       | expr -> expr |> Expr.to_string |> print_endline)
   | "evaluate" -> (
+      Token.set_trailing_zero false;
       match (Parse.parser @@ tokens filename)#to_expr with
       | exception Parse.ParseError (token, msg) -> Error.of_token token msg
       | expr ->
           let interpreter = Interpreter.interpreter in
           let result = interpreter#evaluate expr in
-          result |> Expr.to_string |> print_endline)
+          print_endline @@ Expr.expr_literal_to_string result)
   | unknown_command ->
       Printf.eprintf "Unknown command: %s\n" unknown_command;
       exit 1
 ;;
 
-if !Error.hadError then exit 65;
-if !Error.hadRuntimeError then exit 70;
+if !Error.had_error then exit 65;
+if !Error.had_runtime_error then exit 70;
 ()
