@@ -3,6 +3,10 @@ open Expr
 exception RuntimeError
 
 let interpreter =
-  object (_self)
-    method evaluate = function Literal l -> l | _ -> raise RuntimeError
+  object (self)
+    method evaluate =
+      function
+      | Literal l -> l
+      | Grouping expr -> self#evaluate expr
+      | _ -> raise RuntimeError
   end
