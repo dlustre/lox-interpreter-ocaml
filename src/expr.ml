@@ -1,4 +1,4 @@
-type expr_literal = NumOrString of Token.literal | Bool of bool | Nil
+type expr_literal = Num of float | String of string | Bool of bool | Nil
 
 type expr =
   | Assign of { name : Token.t; value : expr }
@@ -10,7 +10,8 @@ type expr =
   | Variable of Token.t
 
 let expr_literal_to_string = function
-  | NumOrString literal -> Token.literal_to_string literal
+  | Num num -> Token.literal_to_string (NumberLiteral num)
+  | String string -> Token.literal_to_string (StringLiteral string)
   | Bool bool -> Printf.sprintf "%B" bool
   | Nil -> "nil"
 

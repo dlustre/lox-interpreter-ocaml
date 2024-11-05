@@ -51,9 +51,12 @@ let parser t =
       | _ when self#match_any [ FALSE ] -> Literal (Bool false)
       | _ when self#match_any [ TRUE ] -> Literal (Bool true)
       | _ when self#match_any [ NIL ] -> Literal Nil
-      | TokenWithLiteral { literal; _ } :: _
-        when self#match_any [ NUMBER; STRING ] ->
-          Literal (NumOrString literal)
+      | TokenWithLiteral { literal = NumberLiteral num; _ } :: _
+        when self#match_any [ NUMBER ] ->
+          Literal (Num num)
+      | TokenWithLiteral { literal = StringLiteral string; _ } :: _
+        when self#match_any [ STRING ] ->
+          Literal (String string)
       | variable :: _ when self#match_any [ IDENTIFIER ] -> Variable variable
       | _ when self#match_any [ LEFT_PAREN ] ->
           let expr = self#expression in
