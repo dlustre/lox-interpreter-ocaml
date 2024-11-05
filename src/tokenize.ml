@@ -147,9 +147,9 @@ let rec tokenize chars tokens line =
         | rest, identifier ->
             (identifier |> List.rev |> List.to_seq |> String.of_seq, rest)
       in
-      let identifier, rest = consume_identifier (chars_with_identifier, []) in
-      let kind = lexeme_to_token_kind identifier in
-      tokenize rest (Token { kind; lexeme = identifier; line } :: tokens) line
+      let lexeme, rest = consume_identifier (chars_with_identifier, []) in
+      let kind = lexeme_to_token_kind lexeme in
+      tokenize rest (Token { kind; lexeme; line } :: tokens) line
   | unknown_char :: rest ->
       Error.of_line line
         (Printf.sprintf "Unexpected character: %c" unknown_char);

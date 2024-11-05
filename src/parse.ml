@@ -71,36 +71,27 @@ let parser t =
 
     method factor =
       self#reduce_all_matches [ SLASH; STAR ]
-        (fun operator reduce ->
-          Binary { left = reduce; operator; right = self#unary })
+        (fun operator left -> Binary { left; operator; right = self#unary })
         self#unary
 
     method term =
       self#reduce_all_matches [ MINUS; PLUS ]
-        (fun operator reduce ->
-          Binary { left = reduce; operator; right = self#factor })
+        (fun operator left -> Binary { left; operator; right = self#factor })
         self#factor
 
     method comparison =
       self#reduce_all_matches
         [ GREATER; GREATER_EQUAL; LESS; LESS_EQUAL ]
-        (fun operator reduce ->
-          Binary { left = reduce; operator; right = self#term })
+        (fun operator left -> Binary { left; operator; right = self#term })
         self#term
 
     method equality =
       self#reduce_all_matches
         [ BANG_EQUAL; EQUAL_EQUAL ]
-        (fun operator reduce ->
-          Binary { left = reduce; operator; right = self#comparison })
+        (fun operator left ->
+          Binary { left; operator; right = self#comparison })
         self#comparison
 
     method expression = self#equality
-
-    method to_expr =
-      match self#expression with
-      | exception ParseError (token, msg) ->
-          Error.of_token token msg;
-          None
-      | expr -> Some expr
+    method to_expr = self#expression
   end

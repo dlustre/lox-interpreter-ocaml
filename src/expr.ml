@@ -21,7 +21,7 @@ let rec to_string = function
       parenthesize (lexeme, [ right ], "")
   | Binary { left; operator = Token { lexeme; _ }; right } ->
       parenthesize (lexeme, [ left; right ], "")
-  | _ -> "unknown expr, can't print"
+  | _ -> "Unknown Expr."
 
 and parenthesize = function
   | name, exprs, "" -> parenthesize (name, exprs, "(" ^ name)

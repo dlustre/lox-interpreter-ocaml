@@ -107,4 +107,4 @@ let to_string = function
       Printf.sprintf "%s %s %s" (kind_to_string kind) lexeme
         (literal_to_string literal)
 
-let print tokens = List.iter (fun x -> x |> to_string |> print_endline) tokens
+let print tokens = List.iter (fun t -> t |> to_string |> print_endline) tokens
