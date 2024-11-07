@@ -1,4 +1,5 @@
 open Expr
+open Stmt
 
 exception RuntimeError of Token.t * string
 exception Todo
@@ -11,8 +12,12 @@ let binary = function
   | operator, _, _, _ ->
       raise (RuntimeError (operator, "Operands must be numbers."))
 
+module Env = Map.Make (String)
+
 let interpreter =
   object (self)
+    val mutable env = Env.empty
+
     method evaluate =
       function
       | Literal l -> l
@@ -22,50 +27,32 @@ let interpreter =
           | Num num -> Num ~-.num
           | _ -> raise (RuntimeError (negation, "Operand must be a number.")))
       | Unary { operator = Token { kind = BANG; _ }; right } ->
-          let negated = right |> self#evaluate |> is_truthy |> not in
-          Bool negated
-      | Binary { left; operator = Token { kind = STAR; _ } as operator; right }
-        ->
-          Num
-            (binary (operator, ( *. ), self#evaluate left, self#evaluate right))
-      | Binary { left; operator = Token { kind = SLASH; _ } as operator; right }
-        ->
-          Num
-            (binary (operator, ( /. ), self#evaluate left, self#evaluate right))
-      | Binary { left; operator = Token { kind = PLUS; _ } as operator; right }
-        -> (
+          let logic_negated = right |> self#evaluate |> is_truthy |> not in
+          Bool logic_negated
+      | Binary { left; operator = Token { kind = STAR; _ } as op; right } ->
+          Num (binary (op, ( *. ), self#evaluate left, self#evaluate right))
+      | Binary { left; operator = Token { kind = SLASH; _ } as op; right } ->
+          Num (binary (op, ( /. ), self#evaluate left, self#evaluate right))
+      | Binary { left; operator = Token { kind = PLUS; _ } as op; right } -> (
           match (self#evaluate left, self#evaluate right) with
           | Num left, Num right -> Num (left +. right)
           | String left, String right -> String (left ^ right)
           | _ ->
               raise
                 (RuntimeError
-                   (operator, "Operands must be two numbers or two strings.")))
-      | Binary { left; operator = Token { kind = MINUS; _ } as operator; right }
-        ->
-          Num
-            (binary (operator, ( -. ), self#evaluate left, self#evaluate right))
+                   (op, "Operands must be two numbers or two strings.")))
+      | Binary { left; operator = Token { kind = MINUS; _ } as op; right } ->
+          Num (binary (op, ( -. ), self#evaluate left, self#evaluate right))
+      | Binary { left; operator = Token { kind = GREATER; _ } as op; right } ->
+          Bool (binary (op, ( > ), self#evaluate left, self#evaluate right))
       | Binary
-          { left; operator = Token { kind = GREATER; _ } as operator; right } ->
-          Bool
-            (binary (operator, ( > ), self#evaluate left, self#evaluate right))
-      | Binary
-          {
-            left;
-            operator = Token { kind = GREATER_EQUAL; _ } as operator;
-            right;
-          } ->
-          Bool
-            (binary (operator, ( >= ), self#evaluate left, self#evaluate right))
-      | Binary
-          { left; operator = Token { kind = LESS_EQUAL; _ } as operator; right }
+          { left; operator = Token { kind = GREATER_EQUAL; _ } as op; right } ->
+          Bool (binary (op, ( >= ), self#evaluate left, self#evaluate right))
+      | Binary { left; operator = Token { kind = LESS_EQUAL; _ } as op; right }
         ->
-          Bool
-            (binary (operator, ( < ), self#evaluate left, self#evaluate right))
-      | Binary { left; operator = Token { kind = LESS; _ } as operator; right }
-        ->
-          Bool
-            (binary (operator, ( <= ), self#evaluate left, self#evaluate right))
+          Bool (binary (op, ( < ), self#evaluate left, self#evaluate right))
+      | Binary { left; operator = Token { kind = LESS; _ } as op; right } ->
+          Bool (binary (op, ( <= ), self#evaluate left, self#evaluate right))
       | Binary { left; operator = Token { kind = EQUAL_EQUAL; _ }; right } ->
           Bool
             (match (self#evaluate left, self#evaluate right) with
@@ -79,4 +66,10 @@ let interpreter =
             | String left, String right -> left <> right
             | _ -> true)
       | _ -> raise Todo
+
+    method execute =
+      function
+      | Print expr ->
+          print_endline (expr_literal_to_string (self#evaluate expr))
+      | Expression _ -> raise Todo
   end

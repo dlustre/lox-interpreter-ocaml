@@ -22,20 +22,29 @@ let () =
   | "parse" -> (
       Token.set_trailing_zero true;
       match (Parse.parser @@ tokens filename)#to_expr with
-      | exception Parse.ParseError (token, msg) ->
-          Error.of_token Error.error token msg
+      | exception Parse.ParseError (token, msg) -> Error.of_error token msg
       | expr -> expr |> Expr.to_string |> print_endline)
   | "evaluate" -> (
       Token.set_trailing_zero false;
       match (Parse.parser @@ tokens filename)#to_expr with
-      | exception Parse.ParseError (token, msg) ->
-          Error.of_token Error.error token msg
+      | exception Parse.ParseError (token, msg) -> Error.of_error token msg
       | expr -> (
           let interpreter = Interpreter.interpreter in
           match interpreter#evaluate expr with
           | exception Interpreter.RuntimeError (token, msg) ->
-              Error.of_token Error.runtime_error token msg
+              Error.of_runtime_error token msg
           | result -> print_endline @@ Expr.expr_literal_to_string result))
+  | "run" -> (
+      Token.set_trailing_zero false;
+      match (Parse.parser @@ tokens filename)#to_stmts [] with
+      | exception Parse.ParseError (token, msg) -> Error.of_error token msg
+      | stmt :: _ -> (
+          let interpreter = Interpreter.interpreter in
+          match interpreter#execute stmt with
+          | exception Interpreter.RuntimeError (token, msg) ->
+              Error.of_runtime_error token msg
+          | () -> ())
+      | _ -> print_endline "uh oh")
   | unknown_command ->
       Printf.eprintf "Unknown command: %s\n" unknown_command;
       exit 1

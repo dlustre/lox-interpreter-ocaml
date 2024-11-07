@@ -1,5 +1,6 @@
 open Token
 open Expr
+open Stmt
 
 exception ParseError of Token.t * string
 exception Unreachable
@@ -24,6 +25,8 @@ let parser t =
           self#advance
       | token :: _ -> raise (ParseError (token, error_msg))
       | [] -> raise Unreachable
+
+    method consume_semicolon = self#consume SEMICOLON
 
     (** Evaluate the [reduce] value on each token that matches any of [token_kinds], using a [predicate]. *)
 
@@ -96,5 +99,22 @@ let parser t =
         self#comparison
 
     method expression = self#equality
+
+    method statement =
+      match tokens with
+      | _ when self#match_any [ PRINT ] ->
+          let value = self#expression in
+          let _ = self#consume_semicolon "Expect ';' after value." in
+          Print value
+      | _ ->
+          let expr = self#expression in
+          let _ = self#consume_semicolon "Expect ';' after expression." in
+          Expression expr
+
     method to_expr = self#expression
+
+    method to_stmts stmts =
+      match tokens with
+      | Token { kind = EOF; _ } :: _ -> List.rev stmts
+      | _ -> self#to_stmts (self#statement :: stmts)
   end
