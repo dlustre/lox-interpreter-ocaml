@@ -132,6 +132,16 @@ let parser t =
 
     method statement =
       match tokens with
+      | _ when self#match_any [ IF ] -> (
+          let _ = self#consume LEFT_PAREN "Expect '(' after 'if'." in
+          let condition = self#expression in
+          let _ = self#consume RIGHT_PAREN "Expect ')' after if condition." in
+          let then_branch = self#statement in
+          match tokens with
+          | _ when self#match_any [ ELSE ] ->
+              let else_branch = Some self#statement in
+              If { condition; then_branch; else_branch }
+          | _ -> If { condition; then_branch; else_branch = None })
       | _ when self#match_any [ PRINT ] ->
           let value = self#expression in
           let _ = self#consume_semicolon "Expect ';' after value." in

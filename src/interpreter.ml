@@ -19,11 +19,11 @@ let interpreter =
       function
       | Literal l -> l
       | Grouping expr -> self#evaluate expr
+      | Variable (Token _ as name) -> get name env
       | Assign { name; value } ->
           let value = self#evaluate value in
           assign name value env;
           value
-      | Variable (Token _ as name) -> get name env
       | Unary { operator = Token { kind = MINUS; _ } as negation; right } -> (
           match self#evaluate right with
           | Num num -> Num ~-.num
@@ -73,11 +73,16 @@ let interpreter =
           ()
       | Block stmts ->
           let prev = env in
-          Fun.protect
-            (fun _ ->
-              env <- { enclosing = Some env; values = StringMap.empty };
-              self#interpret_stmts stmts)
-            ~finally:(fun _ -> env <- prev)
+          Fun.protect ~finally:(fun _ -> env <- prev) @@ fun _ ->
+          env <- { enclosing = Some env; values = StringMap.empty };
+          self#interpret_stmts stmts
+      | If { condition; then_branch; else_branch = None } ->
+          if condition |> self#evaluate |> is_truthy then
+            self#execute then_branch
+      | If { condition; then_branch; else_branch = Some else_branch } ->
+          if condition |> self#evaluate |> is_truthy then
+            self#execute then_branch
+          else self#execute else_branch
       | _ -> raise Todo
 
     method interpret_stmts = List.iter (fun stmt -> self#execute stmt)
