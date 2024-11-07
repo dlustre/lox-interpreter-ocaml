@@ -1,3 +1,5 @@
+open Error
+
 let () =
   if Array.length Sys.argv < 3 then (
     Printf.eprintf
@@ -22,31 +24,29 @@ let () =
   | "parse" -> (
       Token.set_trailing_zero true;
       match (Parse.parser @@ tokens filename)#to_expr with
-      | exception Parse.ParseError (token, msg) -> Error.of_error token msg
+      | exception ParseError (token, msg) -> of_error token msg
       | expr -> expr |> Expr.to_string |> print_endline)
   | "evaluate" -> (
       Token.set_trailing_zero false;
       match (Parse.parser @@ tokens filename)#to_expr with
-      | exception Parse.ParseError (token, msg) -> Error.of_error token msg
+      | exception ParseError (token, msg) -> of_error token msg
       | expr -> (
           match Interpreter.interpreter#evaluate expr with
-          | exception Interpreter.RuntimeError (token, msg) ->
-              Error.of_runtime_error token msg
+          | exception RuntimeError (token, msg) -> of_runtime_error token msg
           | result -> print_endline @@ Expr.expr_literal_to_string result))
   | "run" -> (
       Token.set_trailing_zero false;
       match (Parse.parser @@ tokens filename)#to_stmts [] with
-      | exception Parse.ParseError (token, msg) -> Error.of_error token msg
+      | exception ParseError (token, msg) -> of_error token msg
       | stmts -> (
-          if !Error.error then exit 65;
+          if !error then exit 65;
           try Interpreter.interpreter#interpret_stmts stmts
-          with Interpreter.RuntimeError (token, msg) ->
-            Error.of_runtime_error token msg))
+          with RuntimeError (token, msg) -> of_runtime_error token msg))
   | unknown_command ->
       Printf.eprintf "Unknown command: %s\n" unknown_command;
       exit 1
 ;;
 
-if !Error.error then exit 65;
-if !Error.runtime_error then exit 70;
+if !error then exit 65;
+if !runtime_error then exit 70;
 ()

@@ -1,4 +1,6 @@
-var a;
-var b = 2;
-var a = b = 1;
-print a;
+{
+    var baz = 68;
+    var quz = 68;
+    {
+        print baz + quz;
+}

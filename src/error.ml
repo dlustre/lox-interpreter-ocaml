@@ -1,5 +1,10 @@
 open Token
 
+exception ParseError of Token.t * string
+exception RuntimeError of Token.t * string
+exception Todo
+exception Unreachable
+
 let error = ref false
 let runtime_error = ref false
 

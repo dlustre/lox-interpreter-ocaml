@@ -1,20 +1,24 @@
 open Token
 open Expr
 open Stmt
+open Error
 
-exception ParseError of Token.t * string
-exception Unreachable
+exception NilPrevious
 
 let parser t =
   object (self)
     val mutable tokens = t
     val mutable current = 0
+    val mutable previous = None
 
     method advance =
       match tokens with
+      | Token { kind = EOF; _ } :: [] -> (
+          match previous with None -> raise NilPrevious | Some token -> token)
       | token :: rest ->
           tokens <- rest;
           current <- current + 1;
+          previous <- Some token;
           token
       | [] -> raise Unreachable
 
@@ -132,28 +136,47 @@ let parser t =
           let value = self#expression in
           let _ = self#consume_semicolon "Expect ';' after value." in
           Print value
+      | _ when self#match_any [ LEFT_BRACE ] -> Block (self#block [])
       | _ ->
           let expr = self#expression in
           let _ = self#consume_semicolon "Expect ';' after expression." in
           Expression expr
 
     method declaration =
+      try
+        match tokens with
+        | _ when self#match_any [ VAR ] -> (
+            let name = self#consume IDENTIFIER "Expect variable name." in
+            match tokens with
+            | _ when self#match_any [ EQUAL ] ->
+                let init = self#expression in
+                let _ =
+                  self#consume_semicolon
+                    "Expect ';' after variable declaration."
+                in
+                Ok (VarWithInit (name, init))
+            | _ ->
+                let _ =
+                  self#consume_semicolon
+                    "Expect ';' after variable declaration."
+                in
+                Ok (Var name))
+        | _ -> Ok self#statement
+      with ParseError (token, msg) ->
+        Error.of_error token msg;
+        self#synchronize;
+        Error ()
+
+    method block stmts =
       match tokens with
-      | _ when self#match_any [ VAR ] -> (
-          let name = self#consume IDENTIFIER "Expect variable name." in
-          match tokens with
-          | _ when self#match_any [ EQUAL ] ->
-              let init = self#expression in
-              let _ =
-                self#consume_semicolon "Expect ';' after variable declaration."
-              in
-              VarWithInit (name, init)
-          | _ ->
-              let _ =
-                self#consume_semicolon "Expect ';' after variable declaration."
-              in
-              Var name)
-      | _ -> self#statement
+      | Token { kind = RIGHT_BRACE; _ } :: _ | Token { kind = EOF; _ } :: [] ->
+          let _ = self#consume RIGHT_BRACE "Expect '}' after block." in
+          List.rev stmts
+      | _ ->
+          self#block
+            (match self#declaration with
+            | Error _ -> stmts
+            | Ok stmt -> stmt :: stmts)
 
     method to_stmts stmts =
       match tokens with
@@ -161,9 +184,6 @@ let parser t =
       | _ ->
           self#to_stmts
             (match self#declaration with
-            | exception ParseError (token, msg) ->
-                Error.of_error token msg;
-                self#synchronize;
-                stmts
-            | stmt -> stmt :: stmts)
+            | Error _ -> stmts
+            | Ok stmt -> stmt :: stmts)
   end
