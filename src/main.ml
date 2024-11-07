@@ -38,10 +38,9 @@ let () =
       match (Parse.parser @@ tokens filename)#to_stmts [] with
       | exception Parse.ParseError (token, msg) -> Error.of_error token msg
       | stmts -> (
-          match Interpreter.interpreter#interpret_stmts stmts with
-          | exception Interpreter.RuntimeError (token, msg) ->
-              Error.of_runtime_error token msg
-          | () -> ()))
+          try Interpreter.interpreter#interpret_stmts stmts
+          with Interpreter.RuntimeError (token, msg) ->
+            Error.of_runtime_error token msg))
   | unknown_command ->
       Printf.eprintf "Unknown command: %s\n" unknown_command;
       exit 1

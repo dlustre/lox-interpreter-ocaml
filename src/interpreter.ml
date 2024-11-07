@@ -63,7 +63,9 @@ let interpreter =
       function
       | Print expr ->
           print_endline (expr_literal_to_string (self#evaluate expr))
-      | Expression _ -> raise Todo
+      | Expression expr ->
+          let _ = self#evaluate expr in
+          ()
 
     method interpret_stmts =
       function
