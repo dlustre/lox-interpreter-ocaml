@@ -54,17 +54,9 @@ let interpreter =
       | Binary { left; operator = Token { kind = LESS; _ } as op; right } ->
           Bool (binary (op, ( <= ), self#evaluate left, self#evaluate right))
       | Binary { left; operator = Token { kind = EQUAL_EQUAL; _ }; right } ->
-          Bool
-            (match (self#evaluate left, self#evaluate right) with
-            | Num left, Num right -> left = right
-            | String left, String right -> left = right
-            | _ -> false)
+          Bool (self#evaluate left = self#evaluate right)
       | Binary { left; operator = Token { kind = BANG_EQUAL; _ }; right } ->
-          Bool
-            (match (self#evaluate left, self#evaluate right) with
-            | Num left, Num right -> left <> right
-            | String left, String right -> left <> right
-            | _ -> true)
+          Bool (self#evaluate left <> self#evaluate right)
       | _ -> raise Todo
 
     method execute =
@@ -72,4 +64,11 @@ let interpreter =
       | Print expr ->
           print_endline (expr_literal_to_string (self#evaluate expr))
       | Expression _ -> raise Todo
+
+    method interpret_stmts =
+      function
+      | [] -> ()
+      | stmt :: rest ->
+          self#execute stmt;
+          self#interpret_stmts rest
   end
