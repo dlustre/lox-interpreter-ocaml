@@ -121,7 +121,7 @@ let parser t =
 
     method logic_or =
       self#reduce_all_matches [ OR ]
-        (fun operator left -> Logical { left; operator; right = self#logic_or })
+        (fun operator left -> Logical { left; operator; right = self#equality })
         self#equality
 
     method assignment =
