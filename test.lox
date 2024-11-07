@@ -1,13 +1,1 @@
-{
-  var world = "outer world";
-  var hello = "outer hello";
-  {
-    world = "modified world";
-    var hello = "inner hello";
-    print world;
-    print hello;
-  }
-  print world;
-  print hello;
-}
-print hello;
+print nil or "ok";

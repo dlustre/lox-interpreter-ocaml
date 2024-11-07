@@ -32,7 +32,10 @@ let parser t =
 
     method consume_semicolon = self#consume SEMICOLON
 
-    (** Evaluate the [reduce] value on each token that matches any of [token_kinds], using a [predicate]. *)
+    (** 
+    Evaluate the [reduce] value on each subsequent token that matches any of [token_kinds], using a [predicate]. 
+    Intended for parsing chainable expressions (e.g. 'x or y or z').
+    *)
 
     method reduce_all_matches token_kinds predicate reduce =
       match tokens with
@@ -116,8 +119,13 @@ let parser t =
           Binary { left; operator; right = self#comparison })
         self#comparison
 
+    method logic_or =
+      self#reduce_all_matches [ OR ]
+        (fun operator left -> Logical { left; operator; right = self#logic_or })
+        self#equality
+
     method assignment =
-      let expr = self#equality in
+      let expr = self#logic_or in
 
       match tokens with
       | (Token _ as equals) :: _ when self#match_any [ EQUAL ] -> (

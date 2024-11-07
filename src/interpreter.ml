@@ -59,6 +59,9 @@ let interpreter =
           Bool (self#evaluate left = self#evaluate right)
       | Binary { left; operator = Token { kind = BANG_EQUAL; _ }; right } ->
           Bool (self#evaluate left <> self#evaluate right)
+      | Logical { left; operator = Token { kind = OR; _ }; right } ->
+          let left = self#evaluate left in
+          if is_truthy left then left else self#evaluate right
       | _ -> raise Todo
 
     method execute =
