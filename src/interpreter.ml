@@ -13,7 +13,7 @@ let binary = function
 
 let interpreter =
   object (self)
-    val mutable env = GlobalEnv StringMap.empty
+    val mutable env = { enclosing = None; values = StringMap.empty }
 
     method evaluate =
       function
@@ -21,7 +21,7 @@ let interpreter =
       | Grouping expr -> self#evaluate expr
       | Assign { name; value } ->
           let value = self#evaluate value in
-          env <- assign name value env;
+          assign name value env;
           value
       | Variable (Token _ as name) -> get name env
       | Unary { operator = Token { kind = MINUS; _ } as negation; right } -> (
@@ -65,9 +65,9 @@ let interpreter =
       function
       | Print expr ->
           expr |> self#evaluate |> expr_literal_to_string |> print_endline
-      | Var (Token { lexeme; _ }) -> env <- define lexeme Nil env
+      | Var (Token { lexeme; _ }) -> define lexeme Nil env
       | VarWithInit (Token { lexeme; _ }, init) ->
-          env <- define lexeme (self#evaluate init) env
+          define lexeme (self#evaluate init) env
       | Expression expr ->
           let _ = self#evaluate expr in
           ()
@@ -75,15 +75,10 @@ let interpreter =
           let prev = env in
           Fun.protect
             (fun _ ->
-              env <- BlockEnv (env, StringMap.empty);
+              env <- { enclosing = Some env; values = StringMap.empty };
               self#interpret_stmts stmts)
             ~finally:(fun _ -> env <- prev)
       | _ -> raise Todo
 
-    method interpret_stmts =
-      function
-      | [] -> ()
-      | stmt :: rest ->
-          self#execute stmt;
-          self#interpret_stmts rest
+    method interpret_stmts = List.iter (fun stmt -> self#execute stmt)
   end

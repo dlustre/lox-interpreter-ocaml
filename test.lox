@@ -1,6 +1,13 @@
 {
-    var baz = 68;
-    var quz = 68;
-    {
-        print baz + quz;
+  var world = "outer world";
+  var hello = "outer hello";
+  {
+    world = "modified world";
+    var hello = "inner hello";
+    print world;
+    print hello;
+  }
+  print world;
+  print hello;
 }
+print hello;
