@@ -10,7 +10,7 @@ let is_equal = function Nil, Nil -> true | Nil, _ -> false | a, b -> a = b
 let binary = function
   | _, fn, Num left, Num right -> fn left right
   | operator, _, _, _ ->
-      raise (RuntimeError (operator, "Operands must be numbers."))
+      raise @@ RuntimeError (operator, "Operands must be numbers.")
 
 module Env = Map.Make (String)
 
@@ -22,17 +22,21 @@ let interpreter =
       function
       | Literal l -> l
       | Grouping expr -> self#evaluate expr
+      | Assign { name = Token { lexeme; _ }; value } ->
+          let value = self#evaluate value in
+          env <- Env.add lexeme value env;
+          value
       | Variable (Token { lexeme; _ } as name) -> (
           match Env.find lexeme env with
           | exception Not_found ->
               raise
-                (RuntimeError
-                   (name, Printf.sprintf "Undefined variable '%s'." lexeme))
+              @@ RuntimeError
+                   (name, Printf.sprintf "Undefined variable '%s'." lexeme)
           | value -> value)
       | Unary { operator = Token { kind = MINUS; _ } as negation; right } -> (
           match self#evaluate right with
           | Num num -> Num ~-.num
-          | _ -> raise (RuntimeError (negation, "Operand must be a number.")))
+          | _ -> raise @@ RuntimeError (negation, "Operand must be a number."))
       | Unary { operator = Token { kind = BANG; _ }; right } ->
           let logic_negated = right |> self#evaluate |> is_truthy |> not in
           Bool logic_negated
@@ -46,8 +50,8 @@ let interpreter =
           | String left, String right -> String (left ^ right)
           | _ ->
               raise
-                (RuntimeError
-                   (op, "Operands must be two numbers or two strings.")))
+              @@ RuntimeError
+                   (op, "Operands must be two numbers or two strings."))
       | Binary { left; operator = Token { kind = MINUS; _ } as op; right } ->
           Num (binary (op, ( -. ), self#evaluate left, self#evaluate right))
       | Binary { left; operator = Token { kind = GREATER; _ } as op; right } ->

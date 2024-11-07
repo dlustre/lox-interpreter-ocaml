@@ -23,7 +23,7 @@ let parser t =
       | (Token { kind; _ } :: _ | TokenWithLiteral { kind; _ } :: _)
         when kind = token_kind ->
           self#advance
-      | token :: _ -> raise (ParseError (token, error_msg))
+      | token :: _ -> raise @@ ParseError (token, error_msg)
       | [] -> raise Unreachable
 
     method consume_semicolon = self#consume SEMICOLON
@@ -79,7 +79,7 @@ let parser t =
           let expr = self#expression in
           let _ = self#consume RIGHT_PAREN "Expect ')' after expression." in
           Grouping expr
-      | token :: _ -> raise (ParseError (token, "Expect expression."))
+      | token :: _ -> raise @@ ParseError (token, "Expect expression.")
       | [] -> raise Unreachable
 
     method unary =
@@ -112,7 +112,19 @@ let parser t =
           Binary { left; operator; right = self#comparison })
         self#comparison
 
-    method expression = self#equality
+    method assignment =
+      let expr = self#equality in
+
+      match tokens with
+      | (Token _ as equals) :: _ when self#match_any [ EQUAL ] -> (
+          let value = self#assignment in
+          match expr with
+          | Variable name -> Assign { name; value }
+          | _ -> raise @@ ParseError (equals, "Invalid assignment target."))
+      | _ -> expr
+
+    method expression = self#assignment
+    method to_expr = self#expression
 
     method statement =
       match tokens with
@@ -142,8 +154,6 @@ let parser t =
               in
               Var name)
       | _ -> self#statement
-
-    method to_expr = self#expression
 
     method to_stmts stmts =
       match tokens with
