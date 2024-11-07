@@ -1,1 +1,2 @@
-print true != true;
+print "hi";
+print;

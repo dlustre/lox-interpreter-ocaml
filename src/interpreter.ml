@@ -16,12 +16,19 @@ module Env = Map.Make (String)
 
 let interpreter =
   object (self)
-    val mutable env = Env.empty
+    val mutable env : expr_literal Env.t = Env.empty
 
     method evaluate =
       function
       | Literal l -> l
       | Grouping expr -> self#evaluate expr
+      | Variable (Token { lexeme; _ } as name) -> (
+          match Env.find lexeme env with
+          | exception Not_found ->
+              raise
+                (RuntimeError
+                   (name, Printf.sprintf "Undefined variable '%s'." lexeme))
+          | value -> value)
       | Unary { operator = Token { kind = MINUS; _ } as negation; right } -> (
           match self#evaluate right with
           | Num num -> Num ~-.num
@@ -62,10 +69,14 @@ let interpreter =
     method execute =
       function
       | Print expr ->
-          print_endline (expr_literal_to_string (self#evaluate expr))
+          expr |> self#evaluate |> expr_literal_to_string |> print_endline
+      | Var (Token { lexeme; _ }) -> env <- Env.add lexeme Nil env
+      | VarWithInit (Token { lexeme; _ }, init) ->
+          env <- Env.add lexeme (self#evaluate init) env
       | Expression expr ->
           let _ = self#evaluate expr in
           ()
+      | _ -> raise Todo
 
     method interpret_stmts =
       function

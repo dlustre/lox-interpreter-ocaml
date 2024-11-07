@@ -38,6 +38,7 @@ let () =
       match (Parse.parser @@ tokens filename)#to_stmts [] with
       | exception Parse.ParseError (token, msg) -> Error.of_error token msg
       | stmts -> (
+          if !Error.error then exit 65;
           try Interpreter.interpreter#interpret_stmts stmts
           with Interpreter.RuntimeError (token, msg) ->
             Error.of_runtime_error token msg))

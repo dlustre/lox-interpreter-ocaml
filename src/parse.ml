@@ -38,16 +38,30 @@ let parser t =
 
     method check token_kind =
       match tokens with
-      | Token { kind = EOF; _ } :: _ -> false
+      | Token { kind = EOF; _ } :: [] -> false
       | Token { kind; _ } :: _ | TokenWithLiteral { kind; _ } :: _ ->
           kind = token_kind
-      | _ -> raise Unreachable
+      | [] -> raise Unreachable
 
     method match_any token_kinds =
       if List.exists (function kind -> self#check kind) token_kinds then
         let _ = self#advance in
         true
       else false
+
+    method synchronize =
+      let _ = self#advance in
+      self#do_synchronize
+
+    method do_synchronize =
+      match tokens with
+      | Token { kind = EOF; _ } :: [] -> ()
+      | _ when self#match_any [ SEMICOLON ] -> ()
+      | Token
+          { kind = CLASS | FUN | VAR | FOR | IF | WHILE | PRINT | RETURN; _ }
+        :: _ ->
+          ()
+      | _ -> self#synchronize
 
     method primary =
       match tokens with
@@ -66,7 +80,7 @@ let parser t =
           let _ = self#consume RIGHT_PAREN "Expect ')' after expression." in
           Grouping expr
       | token :: _ -> raise (ParseError (token, "Expect expression."))
-      | _ -> raise Unreachable
+      | [] -> raise Unreachable
 
     method unary =
       match tokens with
@@ -111,10 +125,35 @@ let parser t =
           let _ = self#consume_semicolon "Expect ';' after expression." in
           Expression expr
 
+    method declaration =
+      match tokens with
+      | _ when self#match_any [ VAR ] -> (
+          let name = self#consume IDENTIFIER "Expect variable name." in
+          match tokens with
+          | _ when self#match_any [ EQUAL ] ->
+              let init = self#expression in
+              let _ =
+                self#consume_semicolon "Expect ';' after variable declaration."
+              in
+              VarWithInit (name, init)
+          | _ ->
+              let _ =
+                self#consume_semicolon "Expect ';' after variable declaration."
+              in
+              Var name)
+      | _ -> self#statement
+
     method to_expr = self#expression
 
     method to_stmts stmts =
       match tokens with
-      | Token { kind = EOF; _ } :: _ -> List.rev stmts
-      | _ -> self#to_stmts (self#statement :: stmts)
+      | Token { kind = EOF; _ } :: [] -> List.rev stmts
+      | _ ->
+          self#to_stmts
+            (match self#declaration with
+            | exception ParseError (token, msg) ->
+                Error.of_error token msg;
+                self#synchronize;
+                stmts
+            | stmt -> stmt :: stmts)
   end
