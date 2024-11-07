@@ -62,6 +62,9 @@ let interpreter =
       | Logical { left; operator = Token { kind = OR; _ }; right } ->
           let left = self#evaluate left in
           if is_truthy left then left else self#evaluate right
+      | Logical { left; operator = Token { kind = AND; _ }; right } ->
+          let left = self#evaluate left in
+          if not @@ is_truthy left then left else self#evaluate right
       | _ -> raise Todo
 
     method execute =

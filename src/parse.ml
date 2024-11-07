@@ -119,10 +119,16 @@ let parser t =
           Binary { left; operator; right = self#comparison })
         self#comparison
 
-    method logic_or =
-      self#reduce_all_matches [ OR ]
+    method logic_and =
+      self#reduce_all_matches [ AND ]
         (fun operator left -> Logical { left; operator; right = self#equality })
         self#equality
+
+    method logic_or =
+      self#reduce_all_matches [ OR ]
+        (fun operator left ->
+          Logical { left; operator; right = self#logic_and })
+        self#logic_and
 
     method assignment =
       let expr = self#logic_or in
