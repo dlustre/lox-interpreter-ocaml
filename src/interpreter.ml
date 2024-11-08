@@ -52,9 +52,9 @@ let interpreter =
           Bool (binary (op, ( >= ), self#evaluate left, self#evaluate right))
       | Binary { left; operator = Token { kind = LESS_EQUAL; _ } as op; right }
         ->
-          Bool (binary (op, ( < ), self#evaluate left, self#evaluate right))
-      | Binary { left; operator = Token { kind = LESS; _ } as op; right } ->
           Bool (binary (op, ( <= ), self#evaluate left, self#evaluate right))
+      | Binary { left; operator = Token { kind = LESS; _ } as op; right } ->
+          Bool (binary (op, ( < ), self#evaluate left, self#evaluate right))
       | Binary { left; operator = Token { kind = EQUAL_EQUAL; _ }; right } ->
           Bool (self#evaluate left = self#evaluate right)
       | Binary { left; operator = Token { kind = BANG_EQUAL; _ }; right } ->
@@ -89,6 +89,12 @@ let interpreter =
           if condition |> self#evaluate |> is_truthy then
             self#execute then_branch
           else self#execute else_branch
+      | While { condition; body } ->
+          let while_cond = ref @@ self#evaluate condition in
+          while is_truthy !while_cond do
+            self#execute body;
+            while_cond := self#evaluate condition
+          done
       | _ -> raise Todo
 
     method interpret_stmts = List.iter (fun stmt -> self#execute stmt)
