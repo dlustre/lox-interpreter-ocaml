@@ -1,3 +1,1 @@
-var quz = 0;
-while (quz < 3) 
-    print quz = quz + 1;
+for (var baz = 0; baz < 3;) print baz = baz + 1;

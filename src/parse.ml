@@ -144,6 +144,40 @@ let parser t =
     method expression = self#assignment
     method to_expr = self#expression
 
+    method expression_stmt =
+      let expr = self#expression in
+      let _ = self#consume_semicolon "Expect ';' after expression." in
+      Expression expr
+
+    method for_stmt =
+      let _ = self#consume LEFT_PAREN "Expect '(' after 'for'." in
+      let init =
+        match tokens with
+        | _ when self#match_any [ SEMICOLON ] -> None
+        | _ when self#match_any [ VAR ] -> Some self#var_declaration
+        | _ -> Some self#expression_stmt
+      in
+      let condition =
+        match tokens with
+        | Token { kind = SEMICOLON; _ } :: _ -> Literal (Bool true)
+        | _ -> self#expression
+      in
+      let _ = self#consume_semicolon "Expect ';' after loop condition." in
+      let increment =
+        match tokens with
+        | Token { kind = RIGHT_PAREN; _ } :: _ -> None
+        | _ -> Some (Expression self#expression)
+      in
+      let _ = self#consume RIGHT_PAREN "Expect ')' after for clauses." in
+      let body = self#statement in
+      match (init, condition, increment) with
+      | None, condition, None -> While { condition; body }
+      | Some init, condition, None -> Block [ init; While { condition; body } ]
+      | None, condition, Some increment ->
+          While { condition; body = Block [ body; increment ] }
+      | Some init, condition, Some increment ->
+          Block [ init; While { condition; body = Block [ body; increment ] } ]
+
     method statement =
       match tokens with
       | _ when self#match_any [ LEFT_BRACE ] -> Block (self#block [])
@@ -169,30 +203,28 @@ let parser t =
           in
           let body = self#statement in
           While { condition; body }
+      | _ when self#match_any [ FOR ] -> self#for_stmt
+      | _ -> self#expression_stmt
+
+    method var_declaration =
+      let name = self#consume IDENTIFIER "Expect variable name." in
+      match tokens with
+      | _ when self#match_any [ EQUAL ] ->
+          let init = self#expression in
+          let _ =
+            self#consume_semicolon "Expect ';' after variable declaration."
+          in
+          VarWithInit (name, init)
       | _ ->
-          let expr = self#expression in
-          let _ = self#consume_semicolon "Expect ';' after expression." in
-          Expression expr
+          let _ =
+            self#consume_semicolon "Expect ';' after variable declaration."
+          in
+          Var name
 
     method declaration =
       try
         match tokens with
-        | _ when self#match_any [ VAR ] -> (
-            let name = self#consume IDENTIFIER "Expect variable name." in
-            match tokens with
-            | _ when self#match_any [ EQUAL ] ->
-                let init = self#expression in
-                let _ =
-                  self#consume_semicolon
-                    "Expect ';' after variable declaration."
-                in
-                Ok (VarWithInit (name, init))
-            | _ ->
-                let _ =
-                  self#consume_semicolon
-                    "Expect ';' after variable declaration."
-                in
-                Ok (Var name))
+        | _ when self#match_any [ VAR ] -> Ok self#var_declaration
         | _ -> Ok self#statement
       with ParseError (token, msg) ->
         Error.of_error token msg;
