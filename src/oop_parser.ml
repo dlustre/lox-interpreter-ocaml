@@ -5,7 +5,7 @@ open Error
 
 exception NilPrevious
 
-let parser t =
+class parser t =
   object (self)
     val mutable tokens = t
     val mutable current = 0
@@ -89,12 +89,32 @@ let parser t =
       | token :: _ -> raise @@ ParseError (token, "Expect expression.")
       | [] -> raise Unreachable
 
+    method finish_call callee =
+      let rec consume_args args =
+        if List.length args >= 255 then
+          Error.of_error (List.hd tokens) "Can't have more than 255 arguments.";
+        let args = self#expression :: args in
+        if self#match_any [ COMMA ] then consume_args @@ args else List.rev args
+      in
+
+      let args =
+        if not @@ self#check RIGHT_PAREN then consume_args [] else []
+      in
+
+      let paren = self#consume RIGHT_PAREN "Expect ')' after arguments." in
+      Call { callee; paren; args }
+
+    method call =
+      self#reduce_all_matches [ LEFT_PAREN ]
+        (fun _ callee -> self#finish_call callee)
+        self#primary
+
     method unary =
       match tokens with
       | operator :: _ when self#match_any [ BANG; MINUS ] ->
           let right = self#unary in
           Unary { operator; right }
-      | _ -> self#primary
+      | _ -> self#call
 
     method factor =
       self#reduce_all_matches [ SLASH; STAR ]
