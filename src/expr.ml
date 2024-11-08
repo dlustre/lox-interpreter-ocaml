@@ -3,6 +3,7 @@ type expr_literal = Num of float | String of string | Bool of bool | Nil
 type expr =
   | Assign of { name : Token.t; value : expr }
   | Binary of { left : expr; operator : Token.t; right : expr }
+  | Call of { callee : expr; paren : Token.t; args : expr list }
   | Grouping of expr
   | Literal of expr_literal
   | Logical of { left : expr; operator : Token.t; right : expr }
