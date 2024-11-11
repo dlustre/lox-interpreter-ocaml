@@ -17,33 +17,39 @@ let () =
     Tokenize.tokenize chars [] 1
   in
 
+  let parser tokens =
+    (module Parser.Make (struct
+      let tokens = tokens
+    end) : Parser.Parser)
+  in
+
   match command with
   | "tokenize" ->
       Token.set_trailing_zero true;
       Token.print @@ tokens filename
   | "parse" -> (
       Token.set_trailing_zero true;
-      let parser = new Parser.parser (tokens filename) in
-      match parser#to_expr with
+      let (module P) = parser (tokens filename) in
+      match P.to_expr () with
       | exception ParseError (token, msg) -> of_error token msg
       | expr -> expr |> Expr.to_string |> print_endline)
   | "evaluate" -> (
       Token.set_trailing_zero false;
-      let parser = new Parser.parser (tokens filename) in
-      match parser#to_expr with
+      let (module P) = parser (tokens filename) in
+      match P.to_expr () with
       | exception ParseError (token, msg) -> of_error token msg
       | expr -> (
-          match Interpreter.interpreter#evaluate expr with
+          match Interpreter.evaluate expr with
           | exception RuntimeError (token, msg) -> of_runtime_error token msg
           | result -> print_endline @@ Expr.expr_literal_to_string result))
   | "run" -> (
       Token.set_trailing_zero false;
-      let parser = new Parser.parser (tokens filename) in
-      match parser#to_stmts [] with
+      let (module P) = parser (tokens filename) in
+      match P.to_stmts [] with
       | exception ParseError (token, msg) -> of_error token msg
       | stmts -> (
           if !error then exit 65;
-          try Interpreter.interpreter#interpret_stmts stmts
+          try Interpreter.interpret_stmts stmts
           with RuntimeError (token, msg) -> of_runtime_error token msg))
   | unknown_command ->
       Printf.eprintf "Unknown command: %s\n" unknown_command;

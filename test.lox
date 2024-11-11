@@ -1,1 +1,22 @@
-("foo")
+fun sayHi(first, last) {
+  print "Hi, " + first + " " + last + "! on god";
+}
+
+fun whatsupbro(bro) {
+  print bro;
+}
+
+sayHi("Dear", "Reader");
+
+whatsupbro("Lebron james bro");
+
+
+fun add(x,y) {
+  print x + y;
+}
+
+fun bro() {
+  print "bro";
+}
+
+bro();
