@@ -1,5 +1,6 @@
 open Token
-open Expr
+open Shared.Expr
+open Shared.Stmt
 open Error
 
 exception NilPrevious
@@ -10,10 +11,14 @@ class parser t =
     val mutable current = 0
     val mutable previous = None
 
+    method get_previous =
+      match previous with
+      | None -> raise NilPrevious
+      | Some previous -> previous
+
     method advance =
       match tokens with
-      | Token { kind = EOF; _ } :: [] -> (
-          match previous with None -> raise NilPrevious | Some token -> token)
+      | Token { kind = EOF; _ } :: [] -> self#get_previous
       | token :: rest ->
           tokens <- rest;
           current <- current + 1;
@@ -197,9 +202,23 @@ class parser t =
       | Some init, condition, Some increment ->
           Block [ init; While { condition; body = Block [ body; increment ] } ]
 
+    method return_stmt =
+      let keyword = self#get_previous in
+      let value =
+        match self#check SEMICOLON with
+        | true -> None
+        | false -> Some self#expression
+      in
+
+      let _ = self#consume_semicolon "Expect ';' after return value." in
+
+      Return { keyword; value }
+
     method statement =
       match tokens with
       | _ when self#match_any [ LEFT_BRACE ] -> Block (self#block [])
+      | _ when self#match_any [ FOR ] -> self#for_stmt
+      | _ when self#match_any [ RETURN ] -> self#return_stmt
       | _ when self#match_any [ PRINT ] ->
           let value = self#expression in
           let _ = self#consume_semicolon "Expect ';' after value." in
@@ -222,7 +241,6 @@ class parser t =
           in
           let body = self#statement in
           While { condition; body }
-      | _ when self#match_any [ FOR ] -> self#for_stmt
       | _ -> self#expression_stmt
 
     method function_declaration kind =

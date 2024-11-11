@@ -1,4 +1,6 @@
-open Expr
+open Shared.Expr
+open Shared
+open Shared.Stmt
 open Env
 open Error
 
@@ -14,7 +16,10 @@ let binary = function
   | operator, _, _, _ ->
       raise @@ RuntimeError (operator, "Operands must be numbers.")
 
-let globals : expr_literal env = new env None
+let globals : literal env =
+  let g : literal env = new env None in
+  g#define "clock" (Callable Native.clock);
+  g
 
 let interpreter =
   object (self)
@@ -44,8 +49,7 @@ let interpreter =
                    Printf.sprintf "Expected %d arguments but got %d." f#arity
                    @@ List.length args );
 
-          f#call self args;
-          Nil
+          f#call self args
       | Assign { name; value } ->
           let value = self#evaluate value in
           env#assign name value;
@@ -96,7 +100,7 @@ let interpreter =
     method execute =
       function
       | Print expr ->
-          expr |> self#evaluate |> expr_literal_to_string |> print_endline
+          expr |> self#evaluate |> literal_to_string |> print_endline
       | Var (Token { lexeme; _ }) -> env#define lexeme Nil
       | VarWithInit (Token { lexeme; _ }, init) ->
           env#define lexeme (self#evaluate init)
@@ -118,7 +122,10 @@ let interpreter =
             while_cond := self#evaluate condition
           done
       | Function { name = Token { lexeme; _ }; _ } as f ->
-          env#define lexeme @@ Callable (lox_function f)
+          env#define lexeme @@ Callable (LoxFunction.make f)
+      | Return { value = None; _ } -> raise @@ Return Nil
+      | Return { value = Some value; _ } ->
+          raise @@ Return (self#evaluate value)
       | _ -> raise Todo
 
     method execute_block stmts block_env =

@@ -7,7 +7,9 @@
   2. Expressions need to also evaluate to functions. 
      
     Since Nystrom's implementation is in Java, he simply type-casts the evaluated expression. But since I represented the 'evaluate' result as variants, I tried to hammer in a 'Function' variant and then I got stuck. The reason this didn't work is because the function's 'call()' needs an interpreter object (an entity that is transitively dependent on the evalulate result type through the environment module) as a parameter. I just couldn't find a way to express that the environment, the interpreter, and the evaluate result type are all mutually recursive (If OCaml had a way to define a module type that was mutually recursive with a type, I think it would have worked.).
+- To have something similar to Nystrom's implementation, I have to keep a lot of the types in one file due to them cyclically depending on one another. For instance, I can't keep `stmt` in its own file because the types are dependent as shown: 
 
+  `expr` -> `stmt` -> `interpreter` -> `expr_literal` -> `expr`
 ## Other notes
 
 - OCaml error messages can sometimes be undecipherable. Something minor like forgetting parens can just flood the IDE with red lines and display an error message mentioning something that doesn't even seem to relate to your code. Given that this is my first time with OCaml, it was cumbersome trying to debug stuff like this. I wonder if such error handling can be improved on, but my guess is that stuff like this just inevitably happens due to OCaml's type inference constantly trying to figure out what it is that you want to do.

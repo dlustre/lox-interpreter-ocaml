@@ -1,5 +1,5 @@
 open Token
-open Expr
+open Shared
 open Error
 
 exception NilPrevious

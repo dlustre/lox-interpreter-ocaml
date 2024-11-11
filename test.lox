@@ -1,22 +1,12 @@
-fun sayHi(first, last) {
-  print "Hi, " + first + " " + last + "! on god";
+fun fib(n) {
+  if (n <= 1) {
+    return n;
+  }
+  return fib(n - 2) + fib(n - 1);
 }
 
-fun whatsupbro(bro) {
-  print bro;
+for (var i = 0; i < 20; i = i + 1) {
+  print fib(i);
 }
 
-sayHi("Dear", "Reader");
-
-whatsupbro("Lebron james bro");
-
-
-fun add(x,y) {
-  print x + y;
-}
-
-fun bro() {
-  print "bro";
-}
-
-bro();
+print clock();
