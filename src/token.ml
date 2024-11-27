@@ -1,3 +1,5 @@
+open Lib
+
 type literal = NumberLiteral of float | StringLiteral of string
 
 let trailing_zero = ref true
@@ -5,9 +7,14 @@ let set_trailing_zero v = trailing_zero := v
 
 let number_to_string num =
   match !trailing_zero with
-  | false -> Printf.sprintf "%g" num
+  | false ->
+      let num_str = Float.to_string num in
+      if Core.String.nget num_str (-1) = '.' then
+        Core.String.slice num_str 0 (-1)
+      else num_str
   | true ->
-      Printf.sprintf (if Float.is_integer num then "%.1f" else "%.15g") num
+      if Float.is_integer num then Printf.sprintf "%.1f" num
+      else Float.to_string num
 
 let literal_to_string = function
   | StringLiteral s -> s
@@ -115,4 +122,4 @@ let to_string = function
       Printf.sprintf "%s %s %s" (kind_to_string kind) lexeme
         (literal_to_string literal)
 
-let print tokens = List.iter (fun t -> t |> to_string |> print_endline) tokens
+let print tokens = List.iter (to_string >> print_endline) tokens

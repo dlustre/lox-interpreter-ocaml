@@ -121,8 +121,8 @@ let interpreter =
             self#execute body;
             while_cond := self#evaluate condition
           done
-      | Function { name = Token { lexeme; _ }; _ } as f ->
-          env#define lexeme @@ Callable (LoxFunction.make f)
+      | Function { name = Token { lexeme; _ }; _ } as fn ->
+          env#define lexeme @@ Callable (LoxFunction.make fn env)
       | Return { value = None; _ } -> raise @@ Return Nil
       | Return { value = Some value; _ } ->
           raise @@ Return (self#evaluate value)

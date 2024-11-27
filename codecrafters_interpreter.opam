@@ -10,7 +10,7 @@ bug-reports:
   "https://github.com/codecrafters-io/build-your-own-interpreter/issues"
 depends: [
   "dune" {>= "3.16"}
-  "lwt"
+  "core"
   "odoc" {with-doc}
 ]
 build: [

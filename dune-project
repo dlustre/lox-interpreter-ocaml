@@ -15,4 +15,4 @@
  (license "MIT")
  (allow_empty true)
  (version 0.1)
- (depends lwt))
+ (depends core))

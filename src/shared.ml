@@ -13,23 +13,24 @@ end =
 and LoxFunction : sig
   type t = Expr.literal Interpreter.t -> Expr.literal list -> Expr.literal
 
-  val make : Stmt.t -> t callable
+  val make : Stmt.t -> Expr.literal Env.t -> t callable
 end = struct
   exception NotAFunction
 
   type t = Expr.literal Interpreter.t -> Expr.literal list -> Expr.literal
 
-  let make (d : Stmt.t) =
+  let make (declaration : Stmt.t) (closure : Expr.literal Env.t) =
     object
       method arity =
-        match d with
+        match declaration with
         | Function { params; _ } -> List.length params
         | _ -> raise NotAFunction
 
       method call interpreter args =
-        match d with
+        match declaration with
         | Function { params; body; _ } -> (
-            let env = Oo.copy interpreter#get_globals in
+            let env = Oo.copy closure in
+            env#print;
             let zipped = Seq.zip (List.to_seq params) (List.to_seq args) in
             let _ =
               Seq.iter
@@ -51,7 +52,7 @@ end = struct
         | _ -> raise NotAFunction
 
       method to_string =
-        match d with
+        match declaration with
         | Function { name = Token { lexeme; _ }; _ } -> "<fn " ^ lexeme ^ ">"
         | _ -> raise NotAFunction
     end
