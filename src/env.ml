@@ -12,16 +12,18 @@ class type ['a] t = object
   method get : Token.t -> 'a
   method assign : Token.t -> 'a -> unit
   method define : string -> 'a -> unit
+  method print_recursive : unit
   method print : unit
 end
 
-class ['a] env enclosing =
-  let counter = ref 0 in
-  object (self)
-    val id =
-      incr counter;
-      !counter
+let counter = ref 0
 
+let get_counter () =
+  incr counter;
+  !counter
+
+class ['a] env enclosing val_to_string id =
+  object (self)
     val enclosing = enclosing
     val mutable values = StringMap.empty
 
@@ -34,10 +36,14 @@ class ['a] env enclosing =
         | Token { lexeme; _ } | TokenWithLiteral { lexeme; _ } -> lexeme
       in
 
+      self#log @@ "get '" ^ lexeme ^ "'";
+
       match enclosing with
       | None -> (
           match StringMap.find_opt lexeme values with
           | None ->
+              self#log @@ Printf.sprintf "Undefined variable '%s'." lexeme;
+
               raise
               @@ RuntimeError
                    (name, Printf.sprintf "%d Undefined variable '%s'." id lexeme)
@@ -57,6 +63,8 @@ class ['a] env enclosing =
       | None -> (
           match StringMap.find_opt lexeme values with
           | None ->
+              self#log @@ Printf.sprintf "Undefined variable '%s'." lexeme;
+
               raise
               @@ RuntimeError
                    (name, Printf.sprintf "Undefined variable '%s'." lexeme)
@@ -77,16 +85,23 @@ class ['a] env enclosing =
 
           values <- StringMap.add name value values
 
-    method print =
+    method print_recursive =
       match enclosing with
       | None ->
           StringMap.iter
-            (fun key _value -> self#log @@ Printf.sprintf "Key: %s\n" key)
-            values;
-          ()
+            (fun key value ->
+              self#log @@ Printf.sprintf "%s -> %s" key (val_to_string value))
+            values
       | Some enclosing ->
           StringMap.iter
-            (fun key _value -> self#log @@ Printf.sprintf "Key: %s\n" key)
+            (fun key value ->
+              self#log @@ Printf.sprintf "%s -> %s" key (val_to_string value))
             values;
           enclosing#print
+
+    method print =
+      StringMap.iter
+        (fun key value ->
+          self#log @@ Printf.sprintf "%s -> %s" key (val_to_string value))
+        values
   end

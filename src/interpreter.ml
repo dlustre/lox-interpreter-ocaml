@@ -4,6 +4,8 @@ open Shared.Stmt
 open Env
 open Error
 
+let do_log = false
+
 let is_truthy = function
   | Callable _ | Num _ | String _ -> true
   | Bool b -> b
@@ -17,7 +19,7 @@ let binary = function
       raise @@ RuntimeError (operator, "Operands must be numbers.")
 
 let globals : literal env =
-  let g : literal env = new env None in
+  let g : literal env = new env None literal_to_string (Env.get_counter ()) in
   g#define "clock" (Callable Native.clock);
   g
 
@@ -107,7 +109,9 @@ let interpreter =
       | Expression expr ->
           let _ = self#evaluate expr in
           ()
-      | Block stmts -> self#execute_block stmts @@ new env @@ Some env
+      | Block stmts ->
+          self#execute_block stmts
+          @@ new env (Some env) literal_to_string (Env.get_counter ())
       | If { condition; then_branch; else_branch = None } ->
           if condition |> self#evaluate |> is_truthy then
             self#execute then_branch
@@ -129,10 +133,18 @@ let interpreter =
       | _ -> raise Todo
 
     method execute_block stmts block_env =
+      if do_log then (
+        print_endline "block env:";
+        block_env#print_recursive);
       let prev = env in
-      Fun.protect ~finally:(fun _ -> env <- prev) @@ fun _ ->
-      env <- block_env;
-      self#interpret_stmts stmts
+      Fun.protect
+        ~finally:(fun _ ->
+          if do_log then print_endline "recovering to prev scope shown below:";
+          prev#print;
+          env <- prev)
+        (fun _ ->
+          env <- block_env;
+          self#interpret_stmts stmts)
 
     method interpret_stmts = List.iter (fun stmt -> self#execute stmt)
   end

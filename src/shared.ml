@@ -1,4 +1,7 @@
 open Callable
+open Lib
+
+let do_log = false
 
 module rec Interpreter : sig
   type 'a t =
@@ -28,9 +31,16 @@ end = struct
 
       method call interpreter args =
         match declaration with
-        | Function { params; body; _ } -> (
-            let env = Oo.copy closure in
-            env#print;
+        | Function
+            {
+              params;
+              body;
+              name = Token { lexeme; _ } | TokenWithLiteral { lexeme; _ };
+            } -> (
+            let env =
+              new Env.env
+                (Some closure) Expr.literal_to_string (Env.get_counter ())
+            in
             let zipped = Seq.zip (List.to_seq params) (List.to_seq args) in
             let _ =
               Seq.iter
@@ -45,10 +55,19 @@ end = struct
                 zipped
             in
 
+            if do_log then
+              print_endline @@ "calling function '" ^ lexeme
+              ^ "' with env below:";
+            env#print;
+
             try
               interpreter#execute_block body env;
               Expr.Nil
-            with Expr.Return value -> value)
+            with Expr.Return value ->
+              if do_log then
+                print_endline @@ "returning with "
+                ^ Expr.literal_to_string value;
+              value)
         | _ -> raise NotAFunction
 
       method to_string =
@@ -114,7 +133,11 @@ end = struct
         parenthesize (lexeme, [ right ], "")
     | Binary { left; operator = Token { lexeme; _ }; right } ->
         parenthesize (lexeme, [ left; right ], "")
-    | _ -> "Unknown Expr."
+    | Call { callee; args; _ } ->
+        parenthesize ("call->" ^ to_string callee, args, "")
+    | Variable (Token { lexeme; _ }) ->
+        parenthesize ("variable " ^ lexeme, [], "")
+    | _ -> raise Error.Todo
 
   and parenthesize = function
     | name, exprs, "" -> parenthesize (name, exprs, "(" ^ name)
@@ -134,5 +157,33 @@ and Stmt : sig
     | While of { condition : Expr.t; body : t }
     | Function of { name : Token.t; params : Token.t list; body : t list }
     | Return of { keyword : Token.t; value : Expr.t option }
-end =
-  Stmt
+
+  val to_string : t -> string
+  val print : t list -> unit
+end = struct
+  type t =
+    | Print of Expr.t
+    | Expression of Expr.t
+    | Var of Token.t
+    | VarWithInit of Token.t * Expr.t
+    | Block of t list
+    | If of { condition : Expr.t; then_branch : t; else_branch : t option }
+    | While of { condition : Expr.t; body : t }
+    | Function of { name : Token.t; params : Token.t list; body : t list }
+    | Return of { keyword : Token.t; value : Expr.t option }
+
+  let to_string = function
+    | Print e -> Printf.sprintf "(PrintStmt)" ^ Expr.to_string e
+    | Expression e -> Printf.sprintf "(ExprStmt " ^ Expr.to_string e ^ ")"
+    | Var _ -> Printf.sprintf "(VarStmt)"
+    | VarWithInit _ -> Printf.sprintf "(VarWithInitStmt)"
+    | Block _ -> Printf.sprintf "(BlockStmt)"
+    | If _ -> Printf.sprintf "(IfStmt)"
+    | While _ -> Printf.sprintf "(WhileStmt)"
+    | Function
+        { name = Token { lexeme; _ } | TokenWithLiteral { lexeme; _ }; _ } ->
+        Printf.sprintf "(FunctionStmt " ^ lexeme ^ ")"
+    | Return _ -> Printf.sprintf "(ReturnStmt)"
+
+  let print stmts = List.iter (to_string >> print_endline) stmts
+end

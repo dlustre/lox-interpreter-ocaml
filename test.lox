@@ -1,15 +1,44 @@
-print clock() + 75;
+// This program uses a while loop to count down from 6 to 1, printing each number
+// and then decrementing the count until it reaches 0, at which point it prints
+// "Blast off!"
+// var count = 6;
+// 
+// fun tick() {
+//   if (count > 0) {
+//     print count;
+//     count = count - 1;
+//     return false;
+//   }
+//   print "Blast off!";
+//   return true;
+// }
 
-fun makeCounter() {
-  var i = 0;
-  fun count() {
-    i = i + 1;
-    print i;
-  }
+while (!tick()) {}
 
-  return count;
+// fun returnArg(arg) {
+//   return arg;
+// }
+// 
+// fun returnFunCallWithArg(func, arg) {
+//   return returnArg(func)(arg);
+// }
+// 
+// fun printArg(arg) {
+//   print arg;
+// }
+// 
+// returnArg(printArg)("bar");
+
+fun returnArg(arg) {
+  return arg;
 }
 
-var counter = makeCounter();
-counter(); // "1".
-counter(); // "2".
+fun returnFunCallWithArg(func, arg) {
+  return returnArg(func)(arg);
+}
+
+fun printArg(arg) {
+  print arg;
+}
+
+returnFunCallWithArg(printArg, "bar");
