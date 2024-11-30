@@ -106,19 +106,12 @@ let kind_to_string = function
   | WHILE -> "WHILE"
   | EOF -> "EOF"
 
-type t =
-  | Token of { kind : kind; lexeme : string; line : int }
-  | TokenWithLiteral of {
-      kind : kind;
-      lexeme : string;
-      line : int;
-      literal : literal;
-    }
+type t = { kind : kind; lexeme : string; line : int; literal : literal option }
 
 let to_string = function
-  | Token { kind; lexeme; _ } ->
+  | { kind; literal = None; lexeme; _ } ->
       Printf.sprintf "%s %s %s" (kind_to_string kind) lexeme "null"
-  | TokenWithLiteral { kind; literal; lexeme; _ } ->
+  | { kind; literal = Some literal; lexeme; _ } ->
       Printf.sprintf "%s %s %s" (kind_to_string kind) lexeme
         (literal_to_string literal)
 

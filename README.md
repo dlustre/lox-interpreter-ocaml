@@ -10,6 +10,9 @@
 - To have something similar to Nystrom's implementation, I have to keep a lot of the types in one file due to them cyclically depending on one another. For instance, I can't keep `stmt` in its own file because the types are dependent as shown: 
 
   `expr` -> `stmt` -> `interpreter` -> `expr_literal` -> `expr`
+
+- In the beginning, I solely opted for variant types as opposed to option fields since it seemed more idiomatic (nominal over structural) and easier to work with. But in retrospect, I think option fields are easier to reason about (when applicable).
+
 ## Other notes
 
 - OCaml error messages can sometimes be undecipherable. Something minor like forgetting parens can just flood the IDE with red lines and display an error message mentioning something that doesn't even seem to relate to your code. Given that this is my first time with OCaml, it was cumbersome trying to debug stuff like this. I wonder if such error handling can be improved on, but my guess is that stuff like this just inevitably happens due to OCaml's type inference constantly trying to figure out what it is that you want to do.

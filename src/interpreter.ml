@@ -33,7 +33,7 @@ let interpreter =
       function
       | Literal l -> l
       | Grouping expr -> self#evaluate expr
-      | Variable (Token _ as name) -> env#get name
+      | Variable (_ as name) -> env#get name
       | Call { callee; paren; args } ->
           let f =
             match self#evaluate callee with
@@ -56,18 +56,18 @@ let interpreter =
           let value = self#evaluate value in
           env#assign name value;
           value
-      | Unary { operator = Token { kind = MINUS; _ } as negation; right } -> (
+      | Unary { operator = { kind = MINUS; _ } as negation; right } -> (
           match self#evaluate right with
           | Num num -> Num ~-.num
           | _ -> raise @@ RuntimeError (negation, "Operand must be a number."))
-      | Unary { operator = Token { kind = BANG; _ }; right } ->
+      | Unary { operator = { kind = BANG; _ }; right } ->
           let logic_negated = right |> self#evaluate |> is_truthy |> not in
           Bool logic_negated
-      | Binary { left; operator = Token { kind = STAR; _ } as op; right } ->
+      | Binary { left; operator = { kind = STAR; _ } as op; right } ->
           Num (binary (op, ( *. ), self#evaluate left, self#evaluate right))
-      | Binary { left; operator = Token { kind = SLASH; _ } as op; right } ->
+      | Binary { left; operator = { kind = SLASH; _ } as op; right } ->
           Num (binary (op, ( /. ), self#evaluate left, self#evaluate right))
-      | Binary { left; operator = Token { kind = PLUS; _ } as op; right } -> (
+      | Binary { left; operator = { kind = PLUS; _ } as op; right } -> (
           match (self#evaluate left, self#evaluate right) with
           | Num left, Num right -> Num (left +. right)
           | String left, String right -> String (left ^ right)
@@ -75,26 +75,24 @@ let interpreter =
               raise
               @@ RuntimeError
                    (op, "Operands must be two numbers or two strings."))
-      | Binary { left; operator = Token { kind = MINUS; _ } as op; right } ->
+      | Binary { left; operator = { kind = MINUS; _ } as op; right } ->
           Num (binary (op, ( -. ), self#evaluate left, self#evaluate right))
-      | Binary { left; operator = Token { kind = GREATER; _ } as op; right } ->
+      | Binary { left; operator = { kind = GREATER; _ } as op; right } ->
           Bool (binary (op, ( > ), self#evaluate left, self#evaluate right))
-      | Binary
-          { left; operator = Token { kind = GREATER_EQUAL; _ } as op; right } ->
+      | Binary { left; operator = { kind = GREATER_EQUAL; _ } as op; right } ->
           Bool (binary (op, ( >= ), self#evaluate left, self#evaluate right))
-      | Binary { left; operator = Token { kind = LESS_EQUAL; _ } as op; right }
-        ->
+      | Binary { left; operator = { kind = LESS_EQUAL; _ } as op; right } ->
           Bool (binary (op, ( <= ), self#evaluate left, self#evaluate right))
-      | Binary { left; operator = Token { kind = LESS; _ } as op; right } ->
+      | Binary { left; operator = { kind = LESS; _ } as op; right } ->
           Bool (binary (op, ( < ), self#evaluate left, self#evaluate right))
-      | Binary { left; operator = Token { kind = EQUAL_EQUAL; _ }; right } ->
+      | Binary { left; operator = { kind = EQUAL_EQUAL; _ }; right } ->
           Bool (self#evaluate left = self#evaluate right)
-      | Binary { left; operator = Token { kind = BANG_EQUAL; _ }; right } ->
+      | Binary { left; operator = { kind = BANG_EQUAL; _ }; right } ->
           Bool (self#evaluate left <> self#evaluate right)
-      | Logical { left; operator = Token { kind = OR; _ }; right } ->
+      | Logical { left; operator = { kind = OR; _ }; right } ->
           let left = self#evaluate left in
           if is_truthy left then left else self#evaluate right
-      | Logical { left; operator = Token { kind = AND; _ }; right } ->
+      | Logical { left; operator = { kind = AND; _ }; right } ->
           let left = self#evaluate left in
           if not @@ is_truthy left then left else self#evaluate right
       | _ -> raise Todo
@@ -103,8 +101,8 @@ let interpreter =
       function
       | Print expr ->
           expr |> self#evaluate |> literal_to_string |> print_endline
-      | Var (Token { lexeme; _ }) -> env#define lexeme Nil
-      | VarWithInit (Token { lexeme; _ }, init) ->
+      | Var { lexeme; _ } -> env#define lexeme Nil
+      | VarWithInit ({ lexeme; _ }, init) ->
           env#define lexeme (self#evaluate init)
       | Expression expr ->
           let _ = self#evaluate expr in
@@ -125,12 +123,11 @@ let interpreter =
             self#execute body;
             while_cond := self#evaluate condition
           done
-      | Function { name = Token { lexeme; _ }; _ } as fn ->
+      | Function { name = { lexeme; _ }; _ } as fn ->
           env#define lexeme @@ Callable (LoxFunction.make fn env)
       | Return { value = None; _ } -> raise @@ Return Nil
       | Return { value = Some value; _ } ->
           raise @@ Return (self#evaluate value)
-      | _ -> raise Todo
 
     method execute_block stmts block_env =
       if do_log then (

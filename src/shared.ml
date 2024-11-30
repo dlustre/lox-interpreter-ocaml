@@ -31,12 +31,7 @@ end = struct
 
       method call interpreter args =
         match declaration with
-        | Function
-            {
-              params;
-              body;
-              name = Token { lexeme; _ } | TokenWithLiteral { lexeme; _ };
-            } -> (
+        | Function { params; body; name = { lexeme; _ } } -> (
             let env =
               new Env.env
                 (Some closure) Expr.literal_to_string (Env.get_counter ())
@@ -45,12 +40,8 @@ end = struct
             let _ =
               Seq.iter
                 (fun (param, arg) ->
-                  let lexeme =
-                    match param with
-                    | Token.Token { lexeme; _ }
-                    | Token.TokenWithLiteral { lexeme; _ } ->
-                        lexeme
-                  in
+                  let { lexeme; _ } : Token.t = param in
+
                   env#define lexeme arg)
                 zipped
             in
@@ -72,7 +63,7 @@ end = struct
 
       method to_string =
         match declaration with
-        | Function { name = Token { lexeme; _ }; _ } -> "<fn " ^ lexeme ^ ">"
+        | Function { name = { lexeme; _ }; _ } -> "<fn " ^ lexeme ^ ">"
         | _ -> raise NotAFunction
     end
 end
@@ -129,14 +120,13 @@ end = struct
   let rec to_string = function
     | Literal literal -> literal_to_string literal
     | Grouping expr -> parenthesize ("group", [ expr ], "")
-    | Unary { operator = Token { lexeme; _ }; right } ->
+    | Unary { operator = { lexeme; _ }; right } ->
         parenthesize (lexeme, [ right ], "")
-    | Binary { left; operator = Token { lexeme; _ }; right } ->
+    | Binary { left; operator = { lexeme; _ }; right } ->
         parenthesize (lexeme, [ left; right ], "")
     | Call { callee; args; _ } ->
         parenthesize ("call->" ^ to_string callee, args, "")
-    | Variable (Token { lexeme; _ }) ->
-        parenthesize ("variable " ^ lexeme, [], "")
+    | Variable { lexeme; _ } -> parenthesize ("variable " ^ lexeme, [], "")
     | _ -> raise Error.Todo
 
   and parenthesize = function
@@ -180,8 +170,7 @@ end = struct
     | Block _ -> Printf.sprintf "(BlockStmt)"
     | If _ -> Printf.sprintf "(IfStmt)"
     | While _ -> Printf.sprintf "(WhileStmt)"
-    | Function
-        { name = Token { lexeme; _ } | TokenWithLiteral { lexeme; _ }; _ } ->
+    | Function { name = { lexeme; _ }; _ } ->
         Printf.sprintf "(FunctionStmt " ^ lexeme ^ ")"
     | Return _ -> Printf.sprintf "(ReturnStmt)"
 

@@ -82,17 +82,16 @@ let rec number = function
 
 let rec tokenize chars tokens line =
   match chars with
-  | [] -> List.rev (Token { kind = EOF; lexeme = ""; line } :: tokens)
+  | [] -> List.rev ({ kind = EOF; lexeme = ""; line; literal = None } :: tokens)
   | digit :: _ as chars_with_digit when is_digit digit ->
       let lexeme, rest = number (chars_with_digit, false, []) in
       tokenize rest
-        (TokenWithLiteral
-           {
-             kind = NUMBER;
-             literal = NumberLiteral (Float.of_string lexeme);
-             lexeme;
-             line;
-           }
+        ({
+           kind = NUMBER;
+           literal = Some (NumberLiteral (Float.of_string lexeme));
+           lexeme;
+           line;
+         }
         :: tokens)
         line
   | '"' :: rest -> (
@@ -111,13 +110,12 @@ let rec tokenize chars tokens line =
       match consume_str_literal rest [] with
       | Some (StringLiteral str_literal, after_str) ->
           tokenize after_str
-            (TokenWithLiteral
-               {
-                 kind = STRING;
-                 literal = StringLiteral str_literal;
-                 lexeme = Printf.sprintf "\"%s\"" str_literal;
-                 line;
-               }
+            ({
+               kind = STRING;
+               literal = Some (StringLiteral str_literal);
+               lexeme = Printf.sprintf "\"%s\"" str_literal;
+               line;
+             }
             :: tokens)
             line
       | _ ->
@@ -135,11 +133,11 @@ let rec tokenize chars tokens line =
     when List.exists (fun c -> c = first_char) [ '<'; '>'; '!'; '=' ] ->
       let lexeme = [ first_char; '=' ] |> List.to_seq |> String.of_seq in
       let kind = lexeme_to_token_kind lexeme in
-      tokenize rest (Token { kind; lexeme; line } :: tokens) line
+      tokenize rest ({ kind; lexeme; line; literal = None } :: tokens) line
   | char :: rest when List.exists (fun c -> c = char) single_chars ->
       let lexeme = String.make 1 char in
       let kind = lexeme_to_token_kind lexeme in
-      tokenize rest (Token { kind; lexeme; line } :: tokens) line
+      tokenize rest ({ kind; lexeme; line; literal = None } :: tokens) line
   | alpha_char :: _ as chars_with_identifier when is_alpha alpha_char ->
       let rec consume_identifier = function
         | alnum_char :: rest, identifier when is_alphanumeric alnum_char ->
@@ -149,7 +147,7 @@ let rec tokenize chars tokens line =
       in
       let lexeme, rest = consume_identifier (chars_with_identifier, []) in
       let kind = lexeme_to_token_kind lexeme in
-      tokenize rest (Token { kind; lexeme; line } :: tokens) line
+      tokenize rest ({ kind; lexeme; line; literal = None } :: tokens) line
   | unknown_char :: rest ->
       Error.of_line line
         (Printf.sprintf "Unexpected character: %c" unknown_char);

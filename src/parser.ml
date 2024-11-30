@@ -18,7 +18,7 @@ class parser t =
 
     method advance =
       match tokens with
-      | Token { kind = EOF; _ } :: [] -> self#get_previous
+      | { kind = EOF; _ } :: [] -> self#get_previous
       | token :: rest ->
           tokens <- rest;
           current <- current + 1;
@@ -28,9 +28,7 @@ class parser t =
 
     method consume token_kind error_msg =
       match tokens with
-      | (Token { kind; _ } :: _ | TokenWithLiteral { kind; _ } :: _)
-        when kind = token_kind ->
-          self#advance
+      | { kind; _ } :: _ when kind = token_kind -> self#advance
       | token :: _ -> raise @@ ParseError (token, error_msg)
       | [] -> raise Unreachable
 
@@ -49,9 +47,8 @@ class parser t =
 
     method check token_kind =
       match tokens with
-      | Token { kind = EOF; _ } :: [] -> false
-      | Token { kind; _ } :: _ | TokenWithLiteral { kind; _ } :: _ ->
-          kind = token_kind
+      | { kind = EOF; _ } :: [] -> false
+      | { kind; _ } :: _ -> kind = token_kind
       | [] -> raise Unreachable
 
     method match_any token_kinds =
@@ -66,11 +63,10 @@ class parser t =
 
     method do_synchronize =
       match tokens with
-      | Token { kind = EOF; _ } :: [] -> ()
+      | { kind = EOF; _ } :: [] -> ()
       | _ when self#match_any [ SEMICOLON ] -> ()
-      | Token
-          { kind = CLASS | FUN | VAR | FOR | IF | WHILE | PRINT | RETURN; _ }
-        :: _ ->
+      | { kind = CLASS | FUN | VAR | FOR | IF | WHILE | PRINT | RETURN; _ } :: _
+        ->
           ()
       | _ -> self#synchronize
 
@@ -79,10 +75,10 @@ class parser t =
       | _ when self#match_any [ FALSE ] -> Literal (Bool false)
       | _ when self#match_any [ TRUE ] -> Literal (Bool true)
       | _ when self#match_any [ NIL ] -> Literal Nil
-      | TokenWithLiteral { literal = NumberLiteral num; _ } :: _
+      | { literal = Some (NumberLiteral num); _ } :: _
         when self#match_any [ NUMBER ] ->
           Literal (Num num)
-      | TokenWithLiteral { literal = StringLiteral string; _ } :: _
+      | { literal = Some (StringLiteral string); _ } :: _
         when self#match_any [ STRING ] ->
           Literal (String string)
       | variable :: _ when self#match_any [ IDENTIFIER ] -> Variable variable
@@ -158,7 +154,7 @@ class parser t =
       let expr = self#logic_or in
 
       match tokens with
-      | (Token _ as equals) :: _ when self#match_any [ EQUAL ] -> (
+      | (_ as equals) :: _ when self#match_any [ EQUAL ] -> (
           let value = self#assignment in
           match expr with
           | Variable name -> Assign { name; value }
@@ -183,13 +179,13 @@ class parser t =
       in
       let condition =
         match tokens with
-        | Token { kind = SEMICOLON; _ } :: _ -> Literal (Bool true)
+        | { kind = SEMICOLON; _ } :: _ -> Literal (Bool true)
         | _ -> self#expression
       in
       let _ = self#consume_semicolon "Expect ';' after loop condition." in
       let increment =
         match tokens with
-        | Token { kind = RIGHT_PAREN; _ } :: _ -> None
+        | { kind = RIGHT_PAREN; _ } :: _ -> None
         | _ -> Some (Expression self#expression)
       in
       let _ = self#consume RIGHT_PAREN "Expect ')' after for clauses." in
@@ -303,7 +299,7 @@ class parser t =
 
     method block stmts =
       match tokens with
-      | Token { kind = RIGHT_BRACE; _ } :: _ | Token { kind = EOF; _ } :: [] ->
+      | { kind = RIGHT_BRACE; _ } :: _ | { kind = EOF; _ } :: [] ->
           let _ = self#consume RIGHT_BRACE "Expect '}' after block." in
           List.rev stmts
       | _ ->
@@ -314,7 +310,7 @@ class parser t =
 
     method to_stmts stmts =
       match tokens with
-      | Token { kind = EOF; _ } :: [] -> List.rev stmts
+      | { kind = EOF; _ } :: [] -> List.rev stmts
       | _ ->
           self#to_stmts
             (match self#declaration with

@@ -31,10 +31,7 @@ class ['a] env enclosing val_to_string id =
       if do_log then print_endline @@ Printf.sprintf "[env %d]: %s" id s
 
     method get name : 'a =
-      let lexeme =
-        match name with
-        | Token { lexeme; _ } | TokenWithLiteral { lexeme; _ } -> lexeme
-      in
+      let { lexeme; _ } = name in
 
       self#log @@ "get '" ^ lexeme ^ "'";
 
@@ -54,11 +51,8 @@ class ['a] env enclosing val_to_string id =
           | Some value -> value)
 
     method assign name value =
-      let lexeme =
-        match name with
-        | Token.Token { lexeme; _ } | Token.TokenWithLiteral { lexeme; _ } ->
-            lexeme
-      in
+      let { lexeme; _ } = name in
+
       match enclosing with
       | None -> (
           match StringMap.find_opt lexeme values with
