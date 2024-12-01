@@ -1,5 +1,3 @@
-open Token
-
 exception ParseError of Token.t * string
 exception RuntimeError of Token.t * string
 exception Todo
@@ -15,6 +13,7 @@ let report ref line where message =
 let of_line line message = report error line "" message
 
 let of_token ref token message =
+  let open Token in
   match token with
   | { kind = EOF; line; _ } -> report ref line " at end" message
   | { line; lexeme; _ } -> report ref line (" at '" ^ lexeme ^ "'") message

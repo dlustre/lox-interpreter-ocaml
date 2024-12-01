@@ -9,6 +9,7 @@ module rec Interpreter : sig
     ; evaluate : Expr.t -> Expr.literal
     ; execute : Stmt.t -> unit
     ; execute_block : Stmt.t list -> 'a Env.t -> unit
+    ; resolve : Expr.t -> int -> unit
     ; interpret_stmts : Stmt.t list -> unit >
 end =
   Interpreter

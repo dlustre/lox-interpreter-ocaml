@@ -1,5 +1,3 @@
-open Lib
-
 type literal = NumberLiteral of float | StringLiteral of string
 
 let trailing_zero = ref true
@@ -115,4 +113,4 @@ let to_string = function
       Printf.sprintf "%s %s %s" (kind_to_string kind) lexeme
         (literal_to_string literal)
 
-let print tokens = List.iter (to_string >> print_endline) tokens
+let print tokens = Lib.(List.iter (to_string >> print_endline) tokens)

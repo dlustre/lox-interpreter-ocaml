@@ -1,7 +1,4 @@
 open Shared.Expr
-open Shared
-open Shared.Stmt
-open Env
 open Error
 
 let do_log = false
@@ -11,23 +8,27 @@ let is_truthy = function
   | Bool b -> b
   | Nil -> false
 
-let is_equal = function Nil, Nil -> true | Nil, _ -> false | a, b -> a = b
+let is_equal a b = a = b
 
 let binary = function
   | _, fn, Num left, Num right -> fn left right
   | operator, _, _, _ ->
       raise @@ RuntimeError (operator, "Operands must be numbers.")
 
-let globals : literal env =
-  let g : literal env = new env None literal_to_string (Env.get_counter ()) in
+let globals : literal Env.env =
+  let open Env in
+  let g : literal env = new env None literal_to_string (get_counter ()) in
   g#define "clock" (Callable Native.clock);
   g
+
+let locals_size = 255
 
 let interpreter =
   object (self)
     val mutable env = globals
     val globals = globals
     method get_globals = globals
+    val locals : (Shared.Expr.t, int) Hashtbl.t = Hashtbl.create 255
 
     method evaluate =
       function
@@ -109,7 +110,7 @@ let interpreter =
           ()
       | Block stmts ->
           self#execute_block stmts
-          @@ new env (Some env) literal_to_string (Env.get_counter ())
+          @@ Env.(new env (Some env) literal_to_string (get_counter ()))
       | If { condition; then_branch; else_branch = None } ->
           if condition |> self#evaluate |> is_truthy then
             self#execute then_branch
@@ -124,7 +125,7 @@ let interpreter =
             while_cond := self#evaluate condition
           done
       | Function { name = { lexeme; _ }; _ } as fn ->
-          env#define lexeme @@ Callable (LoxFunction.make fn env)
+          env#define lexeme @@ Callable (Shared.LoxFunction.make fn env)
       | Return { value = None; _ } -> raise @@ Return Nil
       | Return { value = Some value; _ } ->
           raise @@ Return (self#evaluate value)
@@ -143,5 +144,6 @@ let interpreter =
           env <- block_env;
           self#interpret_stmts stmts)
 
+    method resolve expr depth = Hashtbl.add locals expr depth
     method interpret_stmts = List.iter (fun stmt -> self#execute stmt)
   end

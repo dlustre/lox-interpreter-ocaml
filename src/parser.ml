@@ -1,20 +1,13 @@
-open Token
-open Shared.Expr
-open Shared.Stmt
-open Error
-
-exception NilPrevious
-
 class parser t =
+  let open Token in
+  let open Shared.Expr in
+  let open Shared.Stmt in
+  let open Error in
   object (self)
     val mutable tokens = t
     val mutable current = 0
     val mutable previous = None
-
-    method get_previous =
-      match previous with
-      | None -> raise NilPrevious
-      | Some previous -> previous
+    method get_previous = Option.get previous
 
     method advance =
       match tokens with
@@ -190,12 +183,12 @@ class parser t =
       in
       let _ = self#consume RIGHT_PAREN "Expect ')' after for clauses." in
       let body = self#statement in
-      match (init, condition, increment) with
-      | None, condition, None -> While { condition; body }
-      | Some init, condition, None -> Block [ init; While { condition; body } ]
-      | None, condition, Some increment ->
+      match (init, increment) with
+      | None, None -> While { condition; body }
+      | Some init, None -> Block [ init; While { condition; body } ]
+      | None, Some increment ->
           While { condition; body = Block [ body; increment ] }
-      | Some init, condition, Some increment ->
+      | Some init, Some increment ->
           Block [ init; While { condition; body = Block [ body; increment ] } ]
 
     method return_stmt =

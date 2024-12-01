@@ -1,13 +1,9 @@
-open Token
-open Error
-module StringMap = Map.Make (String)
-
 let do_log = false
 
 class type ['a] t = object
   val id : int
   val enclosing : 'a t option
-  val mutable values : 'a StringMap.t
+  val mutable values : (string, 'a) Hashtbl.t
   method log : string -> unit
   method get : Token.t -> 'a
   method assign : Token.t -> 'a -> unit
@@ -23,9 +19,11 @@ let get_counter () =
   !counter
 
 class ['a] env enclosing val_to_string id =
+  let open Token in
+  let open Error in
   object (self)
     val enclosing = enclosing
-    val mutable values = StringMap.empty
+    val mutable values = Hashtbl.create 255
 
     method log s =
       if do_log then print_endline @@ Printf.sprintf "[env %d]: %s" id s
@@ -37,7 +35,7 @@ class ['a] env enclosing val_to_string id =
 
       match enclosing with
       | None -> (
-          match StringMap.find_opt lexeme values with
+          match Hashtbl.find_opt values lexeme with
           | None ->
               self#log @@ Printf.sprintf "Undefined variable '%s'." lexeme;
 
@@ -46,7 +44,7 @@ class ['a] env enclosing val_to_string id =
                    (name, Printf.sprintf "%d Undefined variable '%s'." id lexeme)
           | Some value -> value)
       | Some enclosing -> (
-          match StringMap.find_opt lexeme values with
+          match Hashtbl.find_opt values lexeme with
           | None -> enclosing#get name
           | Some value -> value)
 
@@ -55,7 +53,7 @@ class ['a] env enclosing val_to_string id =
 
       match enclosing with
       | None -> (
-          match StringMap.find_opt lexeme values with
+          match Hashtbl.find_opt values lexeme with
           | None ->
               self#log @@ Printf.sprintf "Undefined variable '%s'." lexeme;
 
@@ -64,37 +62,37 @@ class ['a] env enclosing val_to_string id =
                    (name, Printf.sprintf "Undefined variable '%s'." lexeme)
           | Some _ ->
               (* self#log ("assigning to " ^ lexeme); *)
-              values <- StringMap.add lexeme value values)
+              Hashtbl.add values lexeme value)
       | Some enclosing -> (
-          match StringMap.find_opt lexeme values with
+          match Hashtbl.find_opt values lexeme with
           | None -> enclosing#assign name value
           | Some _ ->
               (* self#log ("in enclosing: assigning to " ^ lexeme); *)
-              values <- StringMap.add lexeme value values)
+              Hashtbl.add values lexeme value)
 
     method define name value =
       match enclosing with
       | None | Some _ ->
           self#log ("defining " ^ name);
 
-          values <- StringMap.add name value values
+          Hashtbl.add values name value
 
     method print_recursive =
       match enclosing with
       | None ->
-          StringMap.iter
+          Hashtbl.iter
             (fun key value ->
               self#log @@ Printf.sprintf "%s -> %s" key (val_to_string value))
             values
       | Some enclosing ->
-          StringMap.iter
+          Hashtbl.iter
             (fun key value ->
               self#log @@ Printf.sprintf "%s -> %s" key (val_to_string value))
             values;
           enclosing#print
 
     method print =
-      StringMap.iter
+      Hashtbl.iter
         (fun key value ->
           self#log @@ Printf.sprintf "%s -> %s" key (val_to_string value))
         values
